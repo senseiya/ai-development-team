@@ -53,6 +53,9 @@ markers = [
     "e2e: End-to-end tests",
 ]
 
+[tool.setuptools.packages.find]
+include = ["apps*", "core*", "db*"]
+
 [build-system]
 requires = ["setuptools>=75.0"]
 build-backend = "setuptools.build_meta"

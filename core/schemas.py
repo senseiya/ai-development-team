@@ -51,8 +51,10 @@ class LLMResponse(BaseModel):
 
     content: str
     model: str
+    provider: str = "unknown"
     tokens_used: int = 0
     finish_reason: str | None = None
+    latency_ms: float | None = None
 
 
 # --- Agent Schemas (MVP minimal) ---

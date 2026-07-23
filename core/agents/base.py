@@ -37,21 +37,22 @@ class BaseAgent(ABC):
     ) -> LLMResponse:
         """Call the LLM with the given prompt.
 
-        In Phase 1, this calls OpenRouter directly.
+        In Phase 1, this called OpenRouter directly.
+        In Phase 2, this uses the provider factory based on DEFAULT_PROVIDER config.
         In Phase 3, this will go through the ModelRouter.
 
         Args:
             prompt: The user prompt.
             system_prompt: Optional system prompt.
-            provider: LLM provider to use (defaults to OpenRouter).
+            provider: LLM provider instance (uses factory if None).
 
         Returns:
             LLMResponse from the model.
         """
         if provider is None:
-            from core.router.providers.openrouter import openrouter_provider
+            from core.router.providers import get_provider
 
-            provider = openrouter_provider
+            provider = get_provider()
 
         return await provider.complete(
             prompt=prompt,

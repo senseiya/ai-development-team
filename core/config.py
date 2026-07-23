@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     OPENROUTER_MODEL: str = "qwen/qwen-2.5-coder-32b-instruct:free"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2.5-coder:7b"
+    DEFAULT_PROVIDER: str = "openrouter"
 
     # API
     API_KEY_STATIC: str = "change-me-in-production"

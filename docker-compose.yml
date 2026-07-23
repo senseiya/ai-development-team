@@ -43,6 +43,12 @@ services:
       resources:
         limits:
           memory: 8G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   api:
     build:
@@ -57,6 +63,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-qwen/qwen-2.5-coder-32b-instruct:free}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-openrouter}
       API_KEY_STATIC: ${API_KEY_STATIC:-change-me-in-production}
     volumes:
       - .:/app
@@ -64,6 +73,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      ollama:
         condition: service_healthy
     command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload
 

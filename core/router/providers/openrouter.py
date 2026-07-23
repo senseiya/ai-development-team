@@ -9,6 +9,11 @@ from core.schemas import LLMResponse
 
 settings = get_settings()
 
+# OpenRouter-specific timeouts (remote API, network-dependent)
+OPENROUTER_TIMEOUT_CONNECT = 10.0
+OPENROUTER_TIMEOUT_READ = 120.0
+OPENROUTER_TIMEOUT_WRITE = 10.0
+
 
 class OpenRouterProvider:
     """OpenRouter API client for LLM completions."""
@@ -24,6 +29,11 @@ class OpenRouterProvider:
         self.model = model or settings.OPENROUTER_MODEL
         self._client: httpx.AsyncClient | None = None
 
+    @property
+    def name(self) -> str:
+        """Provider name."""
+        return "openrouter"
+
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""
         if self._client is None or self._client.is_closed:
@@ -35,7 +45,12 @@ class OpenRouterProvider:
                     "X-Title": "AI Development Team",
                     "Content-Type": "application/json",
                 },
-                timeout=120.0,
+                timeout=httpx.Timeout(
+                    connect=OPENROUTER_TIMEOUT_CONNECT,
+                    read=OPENROUTER_TIMEOUT_READ,
+                    write=OPENROUTER_TIMEOUT_WRITE,
+                    pool=OPENROUTER_TIMEOUT_CONNECT,
+                ),
             )
         return self._client
 
@@ -60,7 +75,10 @@ class OpenRouterProvider:
         Raises:
             httpx.HTTPStatusError: If the API returns an error.
             httpx.ConnectError: If connection fails.
+            httpx.TimeoutException: If request times out.
         """
+        import time
+
         messages: list[dict[str, str]] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -74,7 +92,9 @@ class OpenRouterProvider:
         }
 
         client = await self._get_client()
+        start_time = time.monotonic()
         response = await client.post("/chat/completions", json=payload)
+        latency_ms = (time.monotonic() - start_time) * 1000
         response.raise_for_status()
 
         data = response.json()
@@ -84,15 +104,41 @@ class OpenRouterProvider:
         return LLMResponse(
             content=choice["message"]["content"],
             model=data.get("model", self.model),
+            provider=self.name,
             tokens_used=usage.get("total_tokens", 0),
             finish_reason=choice.get("finish_reason"),
+            latency_ms=latency_ms,
         )
+
+    async def health_check(self) -> "ProviderHealth":
+        """Check if OpenRouter is reachable.
+
+        Returns:
+            ProviderHealth with connection status.
+        """
+        from core.router.providers.base import ProviderHealth
+
+        import time
+
+        try:
+            client = await self._get_client()
+            start_time = time.monotonic()
+            response = await client.get("/models")
+            latency_ms = (time.monotonic() - start_time) * 1000
+            response.raise_for_status()
+            return ProviderHealth(
+                provider=self.name,
+                healthy=True,
+                latency_ms=latency_ms,
+            )
+        except Exception as e:
+            return ProviderHealth(
+                provider=self.name,
+                healthy=False,
+                error=str(e),
+            )
 
     async def close(self) -> None:
         """Close the HTTP client."""
         if self._client and not self._client.is_closed:
             await self._client.aclose()
-
-
-# Module-level singleton for convenience
-openrouter_provider = OpenRouterProvider()

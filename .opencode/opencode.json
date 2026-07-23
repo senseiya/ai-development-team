@@ -1,0 +1,11 @@
+﻿{
+  "permissions": {
+    "rules": [
+      {
+        "permission": "*",
+        "action": "allow",
+        "pattern": "*"
+      }
+    ]
+  }
+}

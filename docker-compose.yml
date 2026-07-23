@@ -44,6 +44,29 @@ services:
         limits:
           memory: 8G
 
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: ai-team-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_team}:${POSTGRES_PASSWORD:-ai_team_secret}@postgres:5432/${POSTGRES_DB:-ai_development_team}
+      REDIS_URL: redis://redis:6379/0
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-qwen/qwen-2.5-coder-32b-instruct:free}
+      API_KEY_STATIC: ${API_KEY_STATIC:-change-me-in-production}
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload
+
 volumes:
   postgres_data:
   redis_data:

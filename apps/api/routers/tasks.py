@@ -1,13 +1,14 @@
 """Tasks router - POST /tasks endpoint."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.deps import get_db_session, verify_api_key
 from core.agents.coder import CoderAgent
+from core.orchestrator.state import create_initial_state
 from core.router.model_router import ModelRouter
 from core.router.registry import seed_model_profiles
 from core.schemas import RunResponse, TaskCreate
@@ -44,7 +45,7 @@ async def create_task(
         HTTPException: If task creation or execution fails.
     """
     run_id = str(uuid.uuid4())
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Create run record
     run = Run(
@@ -63,13 +64,11 @@ async def create_task(
     # Create ModelRouter and Coder Agent
     model_router = ModelRouter(db)
     agent = CoderAgent()
-    state = {
-        "run_id": run_id,
-        "user_request": task.description,
-        "status": "running",
-        "tokens_used": 0,
-        "router": model_router,
-    }
+    state = create_initial_state(
+        run_id=run_id,
+        user_request=task.description,
+        router=model_router,
+    )
 
     try:
         result = await agent.run(state)
@@ -78,7 +77,7 @@ async def create_task(
         run.status = result.get("status", "completed")
         run.generated_code = result.get("generated_code")
         run.tokens_used = result.get("tokens_used", 0)
-        run.updated_at = datetime.utcnow()
+        run.updated_at = datetime.now(timezone.utc)
 
         if result.get("status") == "failed":
             raise HTTPException(
@@ -100,7 +99,7 @@ async def create_task(
         raise
     except Exception as e:
         run.status = "failed"
-        run.updated_at = datetime.utcnow()
+        run.updated_at = datetime.now(timezone.utc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {str(e)}",

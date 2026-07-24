@@ -1,4 +1,8 @@
-"""Base agent interface for the AI Development Team platform."""
+"""Base agent interface for the AI Development Team platform.
+
+Every agent inherits from BaseAgent, declares its capability,
+and implements run(AgentState) -> AgentState.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +10,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
+from core.orchestrator.state import AgentState, AgentMessage
 from core.schemas import LLMResponse, ModelCapability
 
 logger = logging.getLogger(__name__)
@@ -14,8 +19,10 @@ logger = logging.getLogger(__name__)
 class BaseAgent(ABC):
     """Abstract base class for all agents.
 
-    Each agent has a capability it requests from the Model Router
-    and a set of tools it can use.
+    Each agent has:
+    - A capability it requests from the Model Router.
+    - A list of MCP tool names it may use.
+    - A run() method that reads/writes AgentState.
     """
 
     name: str = "base"
@@ -23,14 +30,14 @@ class BaseAgent(ABC):
     tools: list[str] = []
 
     @abstractmethod
-    async def run(self, state: dict[str, Any]) -> dict[str, Any]:
+    async def run(self, state: AgentState) -> AgentState:
         """Execute the agent's logic.
 
         Args:
-            state: Current state of the workflow/run.
+            state: Current AgentState of the workflow/run.
 
         Returns:
-            Updated state after agent execution.
+            Updated AgentState after agent execution.
         """
         ...
 
@@ -38,23 +45,25 @@ class BaseAgent(ABC):
         self,
         prompt: str,
         system_prompt: str | None = None,
-        router: Any | None = None,
+        state: AgentState | None = None,
         **kwargs: Any,
     ) -> LLMResponse:
         """Call the LLM through the Model Router.
 
-        In Phase 1/2, this called providers directly.
-        In Phase 3, this goes through ModelRouter using the agent's capability.
+        The router is read from state["router"]. If no router is
+        available, falls back to the provider factory.
 
         Args:
             prompt: The user prompt.
             system_prompt: Optional system prompt.
-            router: ModelRouter instance. If None, falls back to provider factory.
+            state: Current AgentState (for router access and token tracking).
             **kwargs: Additional arguments (temperature, max_tokens, etc.).
 
         Returns:
             LLMResponse from the model.
         """
+        router = state.get("router") if state else None
+
         if router is not None:
             result = await router.call(
                 capability=self.capability,
@@ -81,3 +90,40 @@ class BaseAgent(ABC):
             prompt=prompt,
             system_prompt=system_prompt,
         )
+
+    def _add_message(
+        self,
+        state: AgentState,
+        content: str,
+        message_type: str = "info",
+    ) -> None:
+        """Append an agent message to the state.
+
+        Args:
+            state: The current AgentState (mutated in place).
+            content: Message content.
+            message_type: One of "info", "warning", "error", "decision".
+        """
+        state.setdefault("messages", []).append(
+            AgentMessage(
+                agent_name=self.name,
+                content=content,
+                message_type=message_type,
+            )
+        )
+
+    def _update_tokens(
+        self,
+        state: AgentState,
+        tokens: int,
+        cost: float = 0.0,
+    ) -> None:
+        """Accumulate token usage and cost in the state.
+
+        Args:
+            state: The current AgentState (mutated in place).
+            tokens: Number of tokens to add.
+            cost: Cost in USD to add.
+        """
+        state["tokens_used"] = state.get("tokens_used", 0) + tokens
+        state["cost_usd"] = state.get("cost_usd", 0.0) + cost

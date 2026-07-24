@@ -70,3 +70,74 @@ class ModelProfile(Base):
             f"<ModelProfile(id={self.id!r}, provider={self.provider!r}, "
             f"model_id={self.model_id!r})>"
         )
+
+
+class RunCheckpoint(Base):
+    """LangGraph checkpoint for run state persistence.
+
+    Each row stores the AgentState at a specific step in the pipeline,
+    enabling pause/resume, audit, and replay.
+    """
+
+    __tablename__ = "run_checkpoints"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    thread_id: Mapped[str] = mapped_column(String(100), nullable=False, default="default")
+    step: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    checkpoint_data: Mapped[str] = mapped_column(Text, nullable=False)
+    meta_data: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<RunCheckpoint(run_id={self.run_id!r}, "
+            f"step={self.step})>"
+        )
+
+
+class User(Base):
+    """User account for JWT authentication."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    username: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<User(id={self.id!r}, username={self.username!r})>"
+
+
+class ApiKey(Base):
+    """API key for programmatic access (optional, alongside JWT)."""
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    key_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ApiKey(id={self.id!r}, name={self.name!r})>"

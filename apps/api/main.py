@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from apps.api.routers import models, runs, tasks
+from apps.api.routers import auth, models, runs, tasks, ws
 from core.config import get_settings
 
 settings = get_settings()
@@ -40,9 +40,11 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
 app.include_router(runs.router, prefix="/api/v1", tags=["runs"])
 app.include_router(models.router, prefix="/api/v1", tags=["models"])
+app.include_router(ws.router, tags=["websocket"])
 
 
 @app.get("/health")

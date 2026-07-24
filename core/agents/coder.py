@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from core.agents.base import BaseAgent
+from core.orchestrator.state import AgentState
 from core.schemas import ModelCapability
 
 logger = logging.getLogger(__name__)
@@ -30,26 +30,23 @@ class CoderAgent(BaseAgent):
     capability = ModelCapability.CODE_GENERATION
     tools: list[str] = []
 
-    async def run(self, state: dict[str, Any]) -> dict[str, Any]:
+    async def run(self, state: AgentState) -> AgentState:
         """Execute the coder agent.
 
         Args:
             state: Must contain 'user_request' with the task description.
-                May contain 'router' (ModelRouter) for automatic model selection.
 
         Returns:
-            Updated state with 'generated_code', 'model_used', 'provider_used',
-            and 'status'.
+            Updated AgentState with 'generated_code', 'model_used',
+            'provider_used', and 'status'.
         """
         user_request = state.get("user_request", "")
-        router = state.get("router")
 
         if not user_request:
-            return {
-                **state,
-                "status": "failed",
-                "error": "No user request provided",
-            }
+            state["status"] = "failed"
+            state["error"] = "No user request provided"
+            self._add_message(state, "No user request provided", "error")
+            return state
 
         prompt = f"Generate code for the following request:\n\n{user_request}"
 
@@ -57,22 +54,23 @@ class CoderAgent(BaseAgent):
             response = await self.call_llm(
                 prompt=prompt,
                 system_prompt=CODER_SYSTEM_PROMPT,
-                router=router,
+                state=state,
             )
 
-            return {
-                **state,
-                "generated_code": response.content,
-                "tokens_used": state.get("tokens_used", 0) + response.tokens_used,
-                "model_used": response.model,
-                "provider_used": response.provider,
-                "status": "completed",
-            }
+            state["generated_code"] = response.content
+            self._update_tokens(state, response.tokens_used)
+            state["model_used"] = response.model
+            state["provider_used"] = response.provider
+            state["status"] = "completed"
+            self._add_message(
+                state,
+                f"Code generated using {response.model} ({response.provider})",
+            )
+            return state
 
         except Exception as e:
             logger.error("CoderAgent failed: %s", str(e))
-            return {
-                **state,
-                "status": "failed",
-                "error": str(e),
-            }
+            state["status"] = "failed"
+            state["error"] = str(e)
+            self._add_message(state, f"Coder failed: {e}", "error")
+            return state

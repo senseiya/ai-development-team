@@ -1,7 +1,12 @@
-"""Tasks router - POST /tasks endpoint."""
+"""Tasks router - POST /tasks endpoint.
 
+Creates a workspace directory for each run and persists file changes.
+"""
+
+import tempfile
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,9 +17,12 @@ from core.orchestrator.state import create_initial_state
 from core.router.model_router import ModelRouter
 from core.router.registry import seed_model_profiles
 from core.schemas import RunResponse, TaskCreate
-from db.models import Run
+from db.models import FileChange, Run
 
 router = APIRouter()
+
+# Base directory for run workspaces
+WORKSPACES_DIR = Path(tempfile.gettempdir()) / "ai-team-workspaces"
 
 
 @router.post(
@@ -30,8 +38,8 @@ async def create_task(
 ) -> RunResponse:
     """Create a new development task and execute it with the Coder Agent.
 
-    The agent uses the ModelRouter to automatically select the best
-    model for code_generation, with fallback chain support.
+    Creates an isolated workspace directory for the run, executes the
+    agent pipeline, and persists file changes to the database.
 
     Args:
         task: The task creation schema with description.
@@ -46,6 +54,10 @@ async def create_task(
     """
     run_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
+
+    # Create workspace directory for this run
+    workspace_path = WORKSPACES_DIR / run_id
+    workspace_path.mkdir(parents=True, exist_ok=True)
 
     # Create run record
     run = Run(
@@ -69,6 +81,7 @@ async def create_task(
         user_request=task.description,
         router=model_router,
     )
+    state["workspace_path"] = str(workspace_path)
 
     try:
         result = await agent.run(state)
@@ -78,6 +91,19 @@ async def create_task(
         run.generated_code = result.get("generated_code")
         run.tokens_used = result.get("tokens_used", 0)
         run.updated_at = datetime.now(timezone.utc)
+
+        # Persist file changes to database
+        files_changed = result.get("files_changed", [])
+        for fc in files_changed:
+            file_change = FileChange(
+                run_id=run_id,
+                file_path=fc.file_path,
+                action=fc.action,
+                content=fc.content[:10000] if fc.content else None,  # Limit content size
+                diff=fc.diff[:10000] if fc.diff else None,
+            )
+            db.add(file_change)
+        await db.flush()
 
         if result.get("status") == "failed":
             raise HTTPException(

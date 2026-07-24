@@ -141,3 +141,27 @@ class ApiKey(Base):
 
     def __repr__(self) -> str:
         return f"<ApiKey(id={self.id!r}, name={self.name!r})>"
+
+
+class FileChange(Base):
+    """File change tracked during a development run.
+
+    Records every file created, modified, or deleted by the Coder agent,
+    including the full diff for audit and replay purposes.
+    """
+
+    __tablename__ = "file_changes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    file_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    action: Mapped[str] = mapped_column(String(20), nullable=False)  # created, modified, deleted
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    diff: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<FileChange(run_id={self.run_id!r}, file_path={self.file_path!r}, action={self.action!r})>"

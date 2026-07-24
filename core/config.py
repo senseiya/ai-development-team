@@ -34,6 +34,16 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
 
+    # GitHub
+    GITHUB_TOKEN: str = ""
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
+
+    # Sandbox
+    SANDBOX_IMAGE: str = "python:3.11-slim"
+    SANDBOX_TIMEOUT: int = 120
+    SANDBOX_MEM_LIMIT: str = "256m"
+
     # App
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"

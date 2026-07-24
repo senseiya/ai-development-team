@@ -141,6 +141,15 @@ class AgentState(TypedDict, total=False):
     tokens_used: int
     router: object | None
     error: str | None
+    # Phase 5: workspace and tool execution state
+    workspace_path: str
+    model_used: str
+    provider_used: str
+    sandbox_exit_code: int
+    sandbox_output: str
+    pr_url: str
+    github_owner: str
+    github_repo: str
 
 
 def create_initial_state(

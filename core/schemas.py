@@ -1,12 +1,12 @@
 """Shared Pydantic schemas for the AI Development Team platform."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class ModelCapability(str, Enum):
+class ModelCapability(StrEnum):
     """Capabilities that agents can request from the Model Router."""
 
     REASONING = "reasoning"

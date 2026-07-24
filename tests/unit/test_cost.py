@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -14,14 +13,12 @@ from core.cost.budget import (
     check_budget,
     get_budget_from_state,
 )
+from core.cost.cache import LLMCache, _cache_key
 from core.cost.tracker import (
-    RunCostSummary,
-    TokenUsage,
     calculate_cost,
     calculate_cost_sync,
     clear_cost_cache,
 )
-from core.cost.cache import LLMCache, _cache_key, get_llm_cache
 from core.schemas import LLMResponse
 
 
@@ -202,7 +199,7 @@ class TestLLMCache:
 class TestCostEndpoints:
     def test_cost_summary_endpoint(self) -> None:
         """GET /api/v1/costs/summary should return 200."""
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock
 
         from apps.api.deps import get_db_session
         from apps.api.main import app
@@ -229,7 +226,7 @@ class TestCostEndpoints:
 
     def test_run_cost_endpoint_not_found(self) -> None:
         """GET /api/v1/costs/runs/{id} should return 404 for unknown run."""
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock
 
         from apps.api.deps import get_db_session
         from apps.api.main import app

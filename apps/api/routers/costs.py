@@ -5,15 +5,12 @@ Provides aggregated token usage and cost breakdown across all runs.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.deps import get_db_session, get_current_user_id
-from core.cost.tracker import RunCostSummary, TokenUsage, clear_cost_cache
+from apps.api.deps import get_current_user_id, get_db_session
 from db.models import Run
 
 router = APIRouter()

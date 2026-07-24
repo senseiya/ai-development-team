@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
-
 import pytest
 
 from core.orchestrator.graph import (
@@ -14,14 +12,9 @@ from core.orchestrator.graph import (
     compile_graph,
 )
 from core.orchestrator.state import (
-    AgentState,
-    ReviewFinding,
-    Severity,
-    TestResult,
     TestSuiteReport,
     create_initial_state,
 )
-
 
 # --- Conditional edge tests ---
 

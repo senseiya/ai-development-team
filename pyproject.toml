@@ -42,6 +42,15 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "SIM", "TCH"]
+ignore = [
+    "B008",   # FastAPI Depends/Security in function defaults
+    "TC001",  # Move application imports into type-checking (FastAPI needs them at runtime)
+    "TC002",  # Move third-party imports into type-checking (FastAPI needs them at runtime)
+    "TC003",  # Move stdlib imports into type-checking
+]
+
+[tool.ruff.lint.per-file-ignores]
+"db/migrations/versions/*" = ["E402", "W291"]  # Alembic auto-generated
 
 [tool.mypy]
 python_version = "3.11"

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from langgraph.checkpoint.base import (
@@ -18,7 +18,6 @@ from langgraph.checkpoint.base import (
     CheckpointTuple,
 )
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import RunCheckpoint
 
@@ -149,7 +148,7 @@ class PostgresCheckpointer(BaseCheckpointSaver[str]):
                 step=step,
                 checkpoint_data=json.dumps(checkpoint_data),
                 meta_data=json.dumps(metadata_data),
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
             session.add(run_checkpoint)
             await session.flush()

@@ -62,7 +62,7 @@ class TestMCPOverheadBenchmark:
 
         overhead_pct = ((mcp_ms - direct_ms) / direct_ms * 100) if direct_ms > 0 else 0
 
-        print(f"\nBenchmark: write_file (100 calls)")
+        print("\nBenchmark: write_file (100 calls)")
         print(f"  Direct: {direct_ms:.1f}ms")
         print(f"  MCP:    {mcp_ms:.1f}ms")
         print(f"  Overhead: {overhead_pct:+.1f}%")
@@ -99,7 +99,7 @@ class TestMCPOverheadBenchmark:
 
         overhead_pct = ((mcp_ms - direct_ms) / direct_ms * 100) if direct_ms > 0 else 0
 
-        print(f"\nBenchmark: read_file (100 calls)")
+        print("\nBenchmark: read_file (100 calls)")
         print(f"  Direct: {direct_ms:.1f}ms")
         print(f"  MCP:    {mcp_ms:.1f}ms")
         print(f"  Overhead: {overhead_pct:+.1f}%")
@@ -137,7 +137,7 @@ class TestMCPOverheadBenchmark:
 
         overhead_pct = ((mcp_ms - direct_ms) / direct_ms * 100) if direct_ms > 0 else 0
 
-        print(f"\nBenchmark: compute_diff (100 calls)")
+        print("\nBenchmark: compute_diff (100 calls)")
         print(f"  Direct: {direct_ms:.1f}ms")
         print(f"  MCP:    {mcp_ms:.1f}ms")
         print(f"  Overhead: {overhead_pct:+.1f}%")

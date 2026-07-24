@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -49,18 +50,15 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         normalized: list[str] = []
         for part in parts:
             # UUID pattern (36 chars with 4 dashes)
-            if len(part) == 36 and part.count("-") == 4:
-                normalized.append("{id}")
-            # Full UUID without dashes (32 hex chars)
-            elif len(part) == 32 and all(c in "0123456789abcdef" for c in part):
-                normalized.append("{id}")
-            # Numeric ID
-            elif part.isdigit():
-                normalized.append("{id}")
-            # Looks like a UUID prefix (contains dashes and hex chars, > 10 chars)
-            elif len(part) > 10 and "-" in part and all(
-                c in "0123456789abcdef-" for c in part
-            ):
+            is_uuid = (
+                (len(part) == 36 and part.count("-") == 4)
+                or (len(part) == 32 and all(c in "0123456789abcdef" for c in part))
+                or part.isdigit()
+                or (len(part) > 10 and "-" in part and all(
+                    c in "0123456789abcdef-" for c in part
+                ))
+            )
+            if is_uuid:
                 normalized.append("{id}")
             else:
                 normalized.append(part)

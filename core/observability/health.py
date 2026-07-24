@@ -7,6 +7,7 @@ Readiness: checks PostgreSQL and Redis connectivity.
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
@@ -14,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.deps import get_db_session
 from core.config import get_settings
-from core.observability.metrics import APP_INFO
 
 router = APIRouter()
 settings = get_settings()
@@ -82,9 +82,6 @@ async def readiness(
         content=result,
         status_code=200 if healthy else 503,
     )
-
-
-from typing import Any
 
 
 @router.get("/health", tags=["health"])

@@ -1,10 +1,13 @@
 """Ollama LLM provider implementation for local models."""
 
+from __future__ import annotations
+
 from typing import Any
 
 import httpx
 
 from core.config import get_settings
+from core.router.providers.base import ProviderHealth
 from core.schemas import LLMResponse
 
 settings = get_settings()
@@ -109,7 +112,7 @@ class OllamaProvider:
             latency_ms=latency_ms,
         )
 
-    async def health_check(self) -> "ProviderHealth":
+    async def health_check(self) -> ProviderHealth:
         """Check if Ollama is running and the model is available.
 
         Returns:

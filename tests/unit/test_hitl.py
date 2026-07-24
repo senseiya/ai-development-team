@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import AsyncClient
@@ -10,12 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.deps import get_db_session
 from apps.api.main import app
+from core.agents.reviewer import ReviewerAgent
 from core.orchestrator.state import (
-    ReviewFinding,
     Severity,
     create_initial_state,
 )
-from core.agents.reviewer import ReviewerAgent
 from core.schemas import LLMResponse
 
 
@@ -65,8 +64,10 @@ class TestHITLTrigger:
 
         review_json = '''{
             "findings": [
-                {"id": "f1", "severity": "critical", "category": "security", "description": "Code injection"},
-                {"id": "f2", "severity": "critical", "category": "security", "description": "XSS vulnerability"}
+                {"id": "f1", "severity": "critical",
+                 "category": "security", "description": "Code injection"},
+                {"id": "f2", "severity": "critical",
+                 "category": "security", "description": "XSS vulnerability"}
             ]
         }'''
 
@@ -99,7 +100,7 @@ class TestApproveEndpoint:
     @pytest.mark.asyncio
     async def test_approve_run_success(self) -> None:
         """Successfully approve a waiting_approval run."""
-        from datetime import datetime, timezone
+        from datetime import UTC, datetime
 
         mock_run = MagicMock()
         mock_run.id = "run-123"
@@ -107,8 +108,8 @@ class TestApproveEndpoint:
         mock_run.task_description = "Test task"
         mock_run.generated_code = "code"
         mock_run.tokens_used = 100
-        mock_run.created_at = datetime.now(timezone.utc)
-        mock_run.updated_at = datetime.now(timezone.utc)
+        mock_run.created_at = datetime.now(UTC)
+        mock_run.updated_at = datetime.now(UTC)
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_run
@@ -138,7 +139,7 @@ class TestApproveEndpoint:
     @pytest.mark.asyncio
     async def test_reject_run(self) -> None:
         """Reject a waiting_approval run."""
-        from datetime import datetime, timezone
+        from datetime import UTC, datetime
 
         mock_run = MagicMock()
         mock_run.id = "run-456"
@@ -146,8 +147,8 @@ class TestApproveEndpoint:
         mock_run.task_description = "Bad task"
         mock_run.generated_code = "bad code"
         mock_run.tokens_used = 50
-        mock_run.created_at = datetime.now(timezone.utc)
-        mock_run.updated_at = datetime.now(timezone.utc)
+        mock_run.created_at = datetime.now(UTC)
+        mock_run.updated_at = datetime.now(UTC)
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_run
@@ -177,13 +178,13 @@ class TestApproveEndpoint:
     @pytest.mark.asyncio
     async def test_approve_non_waiting_run_fails(self) -> None:
         """Cannot approve a run that isn't in waiting_approval state."""
-        from datetime import datetime, timezone
+        from datetime import UTC, datetime
 
         mock_run = MagicMock()
         mock_run.id = "run-789"
         mock_run.status = "running"
-        mock_run.created_at = datetime.now(timezone.utc)
-        mock_run.updated_at = datetime.now(timezone.utc)
+        mock_run.created_at = datetime.now(UTC)
+        mock_run.updated_at = datetime.now(UTC)
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_run

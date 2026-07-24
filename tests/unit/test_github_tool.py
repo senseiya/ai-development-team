@@ -105,12 +105,12 @@ class TestGitHubTokenExchange:
         }
         mock_response.raise_for_status = MagicMock()
 
-        with patch("core.tools.github_tool.httpx.AsyncClient") as MockClient:
+        with patch("core.tools.github_tool.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.post.return_value = mock_response
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=None)
-            MockClient.return_value = mock_client
+            mock_cls.return_value = mock_client
 
             result = await exchange_github_code(
                 GitHubTokenInput(

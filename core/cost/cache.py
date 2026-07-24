@@ -7,7 +7,6 @@ TTL defaults to 1 hour.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import logging

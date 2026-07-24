@@ -7,7 +7,7 @@ Phase 9: Rate limited (5 req/min) for expensive operations.
 
 import tempfile
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -68,7 +68,7 @@ async def create_task(
         HTTPException: If task creation or execution fails.
     """
     run_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Create workspace directory for this run
     workspace_path = WORKSPACES_DIR / run_id
@@ -106,7 +106,7 @@ async def create_task(
             run.status = result.get("status", "completed")
             run.generated_code = result.get("generated_code")
             run.tokens_used = result.get("tokens_used", 0)
-            run.updated_at = datetime.now(timezone.utc)
+            run.updated_at = datetime.now(UTC)
 
             # Persist file changes to database
             files_changed = result.get("files_changed", [])
@@ -145,9 +145,9 @@ async def create_task(
             raise
         except Exception as e:
             run.status = "failed"
-            run.updated_at = datetime.now(timezone.utc)
+            run.updated_at = datetime.now(UTC)
             run_tracer.status = "failed"
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Unexpected error: {str(e)}",
-            )
+            ) from e

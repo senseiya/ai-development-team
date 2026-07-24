@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,17 +13,17 @@ from core.observability.metrics import (
     AGENT_LATENCY,
     AGENT_TOKENS_TOTAL,
     APP_INFO,
-    HTTP_REQUESTS_TOTAL,
     HTTP_REQUEST_LATENCY,
-    LLM_CALLS_TOTAL,
+    HTTP_REQUESTS_TOTAL,
     LLM_CALL_LATENCY,
+    LLM_CALLS_TOTAL,
     RUNS_ACTIVE,
     RUNS_TOTAL,
     SANDBOX_EXECUTIONS,
     SANDBOX_LATENCY,
 )
 from core.observability.middleware import PrometheusMiddleware
-from core.observability.tracing import AgentTracer, RunTracer, trace_run
+from core.observability.tracing import AgentTracer, trace_run
 
 
 class TestStructuredLogging:
@@ -128,9 +126,11 @@ class TestAgentTracer:
 
     def test_tracer_records_failure(self) -> None:
         """AgentTracer should record errors on exception."""
-        with pytest.raises(ValueError, match="test error"):
-            with AgentTracer("test_agent_fail", run_id="run-456") as tracer:
-                raise ValueError("test error")
+        with (
+            pytest.raises(ValueError, match="test error"),
+            AgentTracer("test_agent_fail", run_id="run-456"),
+        ):
+            raise ValueError("test error")
 
     def test_tracer_increments_runs_active(self) -> None:
         """AgentTracer should increment/decrement RUNS_ACTIVE."""

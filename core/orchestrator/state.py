@@ -9,14 +9,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Literal, TypedDict
-
 
 # --- Enums ---
 
 
-class RunStatus(str, Enum):
+class RunStatus(StrEnum):
     """Status of a development run."""
 
     PLANNING = "planning"
@@ -29,7 +28,7 @@ class RunStatus(str, Enum):
     WAITING_APPROVAL = "waiting_approval"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Severity level for review findings."""
 
     INFO = "info"

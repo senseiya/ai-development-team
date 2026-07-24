@@ -31,8 +31,10 @@ Guidelines:
 
 Respond ONLY with a JSON array of subtasks. Example:
 [
-  {"id": "1", "title": "Setup project", "description": "Initialize project structure", "dependencies": []},
-  {"id": "2", "title": "Implement API", "description": "Create REST endpoints", "dependencies": ["1"]}
+  {"id": "1", "title": "Setup project",
+   "description": "Initialize project structure", "dependencies": []},
+  {"id": "2", "title": "Implement API",
+   "description": "Create REST endpoints", "dependencies": ["1"]}
 ]
 """
 
@@ -124,7 +126,7 @@ class PlannerAgent(BaseAgent):
         if text.startswith("```"):
             lines = text.split("\n")
             # Remove first and last lines (``` markers)
-            lines = [l for l in lines if not l.strip().startswith("```")]
+            lines = [line for line in lines if not line.strip().startswith("```")]
             text = "\n".join(lines).strip()
 
         data = json.loads(text)

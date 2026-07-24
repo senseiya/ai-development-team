@@ -6,12 +6,10 @@ extra or missing fields compared to the Pydantic input model.
 
 from __future__ import annotations
 
-import json
-
 import pytest
 
-from core.tools.mcp_server import MCP_TOOLS
 from core.tools.mcp_client import MCPToolClient
+from core.tools.mcp_server import MCP_TOOLS
 
 
 class TestMCPToolSchemas:

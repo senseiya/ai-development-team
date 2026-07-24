@@ -23,8 +23,6 @@ def run_migrations() -> bool:
         True if migrations succeeded or were already up-to-date.
         False if migrations failed.
     """
-    settings = get_settings()
-
     try:
         logger.info("Running database migrations...")
         result = subprocess.run(

@@ -6,7 +6,7 @@ Phase 9: Rate limited (10 req/min) to prevent brute-force attacks.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from passlib.context import CryptContext
@@ -141,8 +141,8 @@ async def register(
         hashed_password=_hash_password(req.password),
         is_active=True,
         is_admin=False,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db.add(user)
     await db.flush()

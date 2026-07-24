@@ -8,8 +8,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from core.observability.metrics import RUNS_TOTAL
-
 logger = logging.getLogger(__name__)
 
 
@@ -25,7 +23,7 @@ class BudgetConfig:
 DEFAULT_BUDGET = BudgetConfig()
 
 
-class BudgetExceeded(Exception):
+class BudgetExceededError(Exception):
     """Raised when a run exceeds its budget."""
 
     def __init__(self, run_id: str, reason: str, current: float, limit: float) -> None:
@@ -37,6 +35,10 @@ class BudgetExceeded(Exception):
             f"Budget exceeded for run {run_id}: {reason} "
             f"({current:.6f} > {limit:.6f})"
         )
+
+
+# Compatibility alias
+BudgetExceeded = BudgetExceededError
 
 
 def check_budget(
@@ -57,7 +59,7 @@ def check_budget(
         True if within budget, False if exceeded.
 
     Raises:
-        BudgetExceeded: If budget is exceeded (also logs the event).
+        BudgetExceededError: If budget is exceeded (also logs the event).
     """
     if budget is None:
         budget = DEFAULT_BUDGET

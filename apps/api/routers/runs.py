@@ -5,14 +5,14 @@ Phase 7: Added /runs/{id}/status for per-agent timing breakdown.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.deps import get_db_session, get_current_user_id
+from apps.api.deps import get_current_user_id, get_db_session
 from core.schemas import AgentStepDetail, RunDetailResponse, RunResponse
 from db.models import Run
 
@@ -95,7 +95,6 @@ async def get_run_status(
     Raises:
         HTTPException: If the run is not found.
     """
-    from core.observability.metrics import AGENT_LATENCY, AGENT_TOKENS_TOTAL
 
     result = await db.execute(select(Run).where(Run.id == run_id))
     run = result.scalar_one_or_none()
@@ -108,7 +107,6 @@ async def get_run_status(
 
     # Build per-agent breakdown from Prometheus metrics
     agents: list[AgentStepDetail] = []
-    total_tokens = 0
 
     for agent_name in ("planner", "coder", "tester", "reviewer", "documentation"):
         # Get latency from histogram (approximate from metric families)
@@ -188,11 +186,11 @@ async def approve_run(
     if req.approved:
         # Resume the run — set status back to running
         run.status = "running"
-        run.updated_at = datetime.now(timezone.utc)
+        run.updated_at = datetime.now(UTC)
     else:
         # Reject — mark as failed
         run.status = "failed"
-        run.updated_at = datetime.now(timezone.utc)
+        run.updated_at = datetime.now(UTC)
 
     await db.flush()
 

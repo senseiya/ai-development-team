@@ -1,6 +1,6 @@
 """Cost optimization package — tracker, budget enforcement, and LLM cache."""
 
-from core.cost.budget import BudgetConfig, BudgetExceeded, check_budget, get_budget_from_state
+from core.cost.budget import BudgetConfig, BudgetExceededError, check_budget, get_budget_from_state
 from core.cost.cache import LLMCache, get_llm_cache
 from core.cost.tracker import (
     RunCostSummary,
@@ -11,8 +11,12 @@ from core.cost.tracker import (
     get_model_costs,
 )
 
+# Compat alias
+BudgetExceeded = BudgetExceededError
+
 __all__ = [
     "BudgetConfig",
+    "BudgetExceededError",
     "BudgetExceeded",
     "LLMCache",
     "RunCostSummary",

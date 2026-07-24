@@ -12,7 +12,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
-from core.orchestrator.state import AgentState, AgentMessage
+from core.orchestrator.state import AgentMessage, AgentState
 from core.schemas import LLMResponse, ModelCapability
 
 logger = logging.getLogger(__name__)

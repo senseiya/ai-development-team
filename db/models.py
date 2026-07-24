@@ -164,4 +164,7 @@ class FileChange(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<FileChange(run_id={self.run_id!r}, file_path={self.file_path!r}, action={self.action!r})>"
+        return (
+            f"<FileChange(run_id={self.run_id!r}, "
+            f"file_path={self.file_path!r}, action={self.action!r})>"
+        )

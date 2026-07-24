@@ -11,6 +11,8 @@ from core.tools.filesystem_tool import (
     FileListInput,
     FileReadInput,
     FileWriteInput,
+    PathTraversalError,
+    SymlinkEscapeError,
     compute_diff,
     list_files,
     read_file,
@@ -63,7 +65,7 @@ class TestWriteFile:
         assert (workspace / "deep" / "nested" / "dir" / "file.py").exists()
 
     def test_write_blocked_dotdot(self, workspace: Path) -> None:
-        with pytest.raises(PermissionError, match="blocked pattern"):
+        with pytest.raises(PathTraversalError, match="blocked pattern"):
             write_file(
                 FileWriteInput(
                     file_path="../etc/passwd",
@@ -73,7 +75,7 @@ class TestWriteFile:
             )
 
     def test_write_blocked_tilde(self, workspace: Path) -> None:
-        with pytest.raises(PermissionError, match="blocked pattern"):
+        with pytest.raises(PathTraversalError, match="blocked pattern"):
             write_file(
                 FileWriteInput(
                     file_path="~/secret",
@@ -105,7 +107,7 @@ class TestReadFile:
             )
 
     def test_read_blocked_traversal(self, workspace: Path) -> None:
-        with pytest.raises(PermissionError, match="blocked pattern"):
+        with pytest.raises(PathTraversalError, match="blocked pattern"):
             read_file(
                 FileReadInput(
                     file_path="../../etc/passwd",
@@ -113,21 +115,60 @@ class TestReadFile:
                 )
             )
 
-    def test_read_blocked_symlink_escape(self, workspace: Path) -> None:
-        # Create a symlink pointing outside workspace
-        # On Windows, symlinks require admin privileges — skip if not available
+    def test_read_blocked_symlink_escape(self, tmp_path: Path) -> None:
+        """Symlink pointing outside the workspace must be blocked.
+
+        CI runs on Linux, but this test was also verified locally on Windows
+        to ensure cross-platform correctness. A dynamic temp file is used
+        instead of a hardcoded path like /etc/passwd to avoid OS-dependent
+        behavior.
+        """
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        (workspace / "safe.txt").write_text("safe")
+
+        outside_dir = tmp_path / "outside"
+        outside_dir.mkdir()
+        outside_file = outside_dir / "secret.txt"
+        outside_file.write_text("secret content")
+
+        # Create a symlink inside workspace pointing to file outside
         link = workspace / "escape_link"
         try:
-            link.symlink_to("/etc/passwd")
+            link.symlink_to(outside_file)
         except OSError:
             pytest.skip("Symlink creation requires admin privileges on Windows")
-        with pytest.raises(PermissionError, match="Symlink"):
+
+        with pytest.raises(SymlinkEscapeError):
             read_file(
                 FileReadInput(
                     file_path="escape_link",
                     workspace_path=str(workspace),
                 )
             )
+        # The real file must NOT have been read
+        assert not outside_file.read_text().startswith("safe")
+
+    def test_read_symlink_inside_workspace_ok(self, tmp_path: Path) -> None:
+        """Symlink pointing INSIDE the workspace must be allowed."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        target = workspace / "real.txt"
+        target.write_text("real content")
+
+        link = workspace / "link_to_real.txt"
+        try:
+            link.symlink_to(target)
+        except OSError:
+            pytest.skip("Symlink creation requires admin privileges on Windows")
+
+        result = read_file(
+            FileReadInput(
+                file_path="link_to_real.txt",
+                workspace_path=str(workspace),
+            )
+        )
+        assert result.content == "real content"
 
 
 class TestListFiles:

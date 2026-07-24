@@ -27,6 +27,27 @@ _BLOCKED_PATTERNS = [
 
 
 # ---------------------------------------------------------------------------
+# Exceptions
+# ---------------------------------------------------------------------------
+
+
+class PathSecurityError(PermissionError):
+    """Base exception for all path security violations.
+
+    Inherits from PermissionError so existing ``except PermissionError``
+    handlers continue to work without changes.
+    """
+
+
+class PathTraversalError(PathSecurityError):
+    """Raised when a path escapes the workspace via ``../`` or absolute path."""
+
+
+class SymlinkEscapeError(PathSecurityError):
+    """Raised when a symlink resolves outside the workspace."""
+
+
+# ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
 
@@ -126,9 +147,9 @@ def _validate_path(file_path: str, workspace_path: str) -> Path:
     """Resolve and validate that the file path stays within the workspace.
 
     This function prevents path traversal attacks by:
-    1. Resolving symlinks
-    2. Checking the resolved path starts with the workspace
-    3. Blocking known dangerous patterns
+    1. Blocking known dangerous patterns (.., ~, $, \\)
+    2. Resolving symlinks and checking the real target is within the workspace
+    3. Checking the resolved path starts with the workspace
 
     Args:
         file_path: The user-provided relative file path.
@@ -138,12 +159,16 @@ def _validate_path(file_path: str, workspace_path: str) -> Path:
         Resolved absolute Path if valid.
 
     Raises:
-        PermissionError: If the path escapes the workspace or is invalid.
+        PathTraversalError: If the path contains blocked patterns or escapes
+            the workspace via ``../`` or absolute path.
+        SymlinkEscapeError: If a symlink resolves outside the workspace.
     """
     # Block dangerous patterns
     for pattern in _BLOCKED_PATTERNS:
         if pattern in file_path:
-            raise PermissionError(f"Path contains blocked pattern '{pattern}': {file_path}")
+            raise PathTraversalError(
+                f"Path contains blocked pattern '{pattern}': {file_path}"
+            )
 
     workspace = Path(workspace_path).resolve()
     target = (workspace / file_path).resolve()
@@ -152,7 +177,7 @@ def _validate_path(file_path: str, workspace_path: str) -> Path:
     try:
         target.relative_to(workspace)
     except ValueError as exc:
-        raise PermissionError(
+        raise PathTraversalError(
             f"Path traversal detected: '{file_path}' resolves outside workspace. "
             f"Target: {target}, Workspace: {workspace}"
         ) from exc
@@ -163,7 +188,7 @@ def _validate_path(file_path: str, workspace_path: str) -> Path:
         try:
             real_target.relative_to(workspace)
         except ValueError as exc:
-            raise PermissionError(
+            raise SymlinkEscapeError(
                 f"Symlink '{file_path}' points outside workspace: {real_target}"
             ) from exc
 

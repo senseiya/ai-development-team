@@ -166,9 +166,7 @@ def _validate_path(file_path: str, workspace_path: str) -> Path:
     # Block dangerous patterns
     for pattern in _BLOCKED_PATTERNS:
         if pattern in file_path:
-            raise PathTraversalError(
-                f"Path contains blocked pattern '{pattern}': {file_path}"
-            )
+            raise PathTraversalError(f"Path contains blocked pattern '{pattern}': {file_path}")
 
     workspace = Path(workspace_path).resolve()
     target = (workspace / file_path).resolve()

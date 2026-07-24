@@ -6,8 +6,6 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.deps import get_db_session
-from apps.api.main import app
 from core.schemas import LLMResponse
 
 
@@ -35,40 +33,30 @@ class TestCreateTaskEndpoint:
         assert response.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_create_task_empty_description(
-        self, client: AsyncClient, valid_api_key: str
-    ) -> None:
+    async def test_create_task_empty_description(self, authenticated_client: AsyncClient) -> None:
         """Test that empty description is rejected."""
-        response = await client.post(
+        response = await authenticated_client.post(
             "/api/v1/tasks",
             json={"description": ""},
-            headers={"X-API-Key": valid_api_key},
         )
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_create_task_missing_description(
-        self, client: AsyncClient, valid_api_key: str
-    ) -> None:
+    async def test_create_task_missing_description(self, authenticated_client: AsyncClient) -> None:
         """Test that missing description field is rejected."""
-        response = await client.post(
+        response = await authenticated_client.post(
             "/api/v1/tasks",
             json={},
-            headers={"X-API-Key": valid_api_key},
         )
         assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_create_task_success(
         self,
-        client: AsyncClient,
-        valid_api_key: str,
+        authenticated_client: AsyncClient,
         mock_openrouter_response: LLMResponse,
-        mock_db_session: AsyncSession,
     ) -> None:
         """Test successful task creation with mocked LLM."""
-        app.dependency_overrides[get_db_session] = lambda: mock_db_session
-
         with patch("apps.api.routers.tasks.CoderAgent") as mock_agent_cls:
             mock_instance = AsyncMock()
             mock_instance.run.return_value = {
@@ -80,10 +68,9 @@ class TestCreateTaskEndpoint:
             }
             mock_agent_cls.return_value = mock_instance
 
-            response = await client.post(
+            response = await authenticated_client.post(
                 "/api/v1/tasks",
                 json={"description": "Create a hello world function"},
-                headers={"X-API-Key": valid_api_key},
             )
 
             assert response.status_code == 201
@@ -93,15 +80,11 @@ class TestCreateTaskEndpoint:
             assert data["generated_code"] is not None
             assert data["tokens_used"] > 0
 
-        app.dependency_overrides.clear()
-
     @pytest.mark.asyncio
     async def test_create_task_handles_agent_failure(
-        self, client: AsyncClient, valid_api_key: str, mock_db_session: AsyncSession
+        self, authenticated_client: AsyncClient
     ) -> None:
         """Test that agent failures are handled properly."""
-        app.dependency_overrides[get_db_session] = lambda: mock_db_session
-
         with patch("apps.api.routers.tasks.CoderAgent") as mock_agent_cls:
             mock_instance = AsyncMock()
             mock_instance.run.return_value = {
@@ -111,15 +94,12 @@ class TestCreateTaskEndpoint:
             }
             mock_agent_cls.return_value = mock_instance
 
-            response = await client.post(
+            response = await authenticated_client.post(
                 "/api/v1/tasks",
                 json={"description": "This will fail"},
-                headers={"X-API-Key": valid_api_key},
             )
 
             assert response.status_code == 500
-
-        app.dependency_overrides.clear()
 
 
 @pytest.mark.unit
@@ -134,19 +114,15 @@ class TestGetRunEndpoint:
 
     @pytest.mark.asyncio
     async def test_get_run_not_found(
-        self, client: AsyncClient, valid_api_key: str, mock_db_session: AsyncSession
+        self,
+        authenticated_client_with_db: tuple[AsyncClient, AsyncSession],
     ) -> None:
         """Test that non-existent run returns 404."""
+        client, mock_db = authenticated_client_with_db
+
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
-        mock_db_session.execute = AsyncMock(return_value=mock_result)
+        mock_db.execute = AsyncMock(return_value=mock_result)
 
-        app.dependency_overrides[get_db_session] = lambda: mock_db_session
-
-        response = await client.get(
-            "/api/v1/runs/non-existent-id",
-            headers={"X-API-Key": valid_api_key},
-        )
+        response = await client.get("/api/v1/runs/non-existent-id")
         assert response.status_code == 404
-
-        app.dependency_overrides.clear()

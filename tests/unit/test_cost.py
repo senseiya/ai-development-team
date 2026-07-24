@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.cost.budget import (
     BudgetConfig,
@@ -198,52 +198,37 @@ class TestLLMCache:
 
 
 class TestCostEndpoints:
-    def test_cost_summary_endpoint(self) -> None:
+    @pytest.mark.asyncio
+    async def test_cost_summary_endpoint(
+        self, authenticated_client, mock_db_session: AsyncSession
+    ) -> None:
         """GET /api/v1/costs/summary should return 200."""
-        from unittest.mock import AsyncMock
-
-        from apps.api.deps import get_db_session
-        from apps.api.main import app
-
-        mock_db = AsyncMock()
         mock_result = MagicMock()
         mock_result.one.return_value = (0, 0)
         mock_result.all.return_value = []
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db_session.execute = AsyncMock(return_value=mock_result)
 
-        app.dependency_overrides[get_db_session] = lambda: mock_db
-        try:
-            client = TestClient(app, raise_server_exceptions=False)
-            resp = client.get(
-                "/api/v1/costs/summary",
-                headers={"X-API-Key": "change-me-in-production"},
-            )
-            assert resp.status_code == 200
-            data = resp.json()
-            assert "total_runs" in data
-            assert "total_tokens" in data
-        finally:
-            app.dependency_overrides.clear()
+        resp = await authenticated_client.get("/api/v1/costs/summary")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total_runs" in data
+        assert "total_tokens" in data
 
-    def test_run_cost_endpoint_not_found(self) -> None:
+    @pytest.mark.asyncio
+    async def test_run_cost_endpoint_not_found(
+        self, authenticated_client, mock_db_session: AsyncSession
+    ) -> None:
         """GET /api/v1/costs/runs/{id} should return 404 for unknown run."""
-        from unittest.mock import AsyncMock
-
-        from apps.api.deps import get_db_session
-        from apps.api.main import app
-
-        mock_db = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_db_session.execute = AsyncMock(return_value=mock_result)
 
-        app.dependency_overrides[get_db_session] = lambda: mock_db
-        try:
-            client = TestClient(app, raise_server_exceptions=False)
-            resp = client.get(
-                "/api/v1/costs/runs/nonexistent",
-                headers={"X-API-Key": "change-me-in-production"},
-            )
-            assert resp.status_code == 404
-        finally:
-            app.dependency_overrides.clear()
+        resp = await authenticated_client.get("/api/v1/costs/runs/nonexistent")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_cost_endpoints_require_auth(self, client) -> None:
+        """Protected cost endpoints must return 401 without auth."""
+        resp = await client.get("/api/v1/costs/summary")
+        assert resp.status_code == 401

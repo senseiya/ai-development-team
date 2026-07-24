@@ -8,6 +8,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apps.api.deps import get_current_user_id, get_db_session, verify_api_key
 from apps.api.main import app
 from core.schemas import LLMResponse
 
@@ -18,6 +19,52 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest_asyncio.fixture
+async def authenticated_client(
+    mock_db_session: AsyncSession,
+) -> AsyncGenerator[AsyncClient, None]:
+    """Create a test client with auth bypassed and DB mocked.
+
+    Use this fixture for testing any protected endpoint (those that use
+    Depends(verify_api_key) or Depends(get_current_user_id)) without
+    having to manually set up dependency_overrides in each test.
+    """
+    app.dependency_overrides[get_db_session] = lambda: mock_db_session
+    app.dependency_overrides[verify_api_key] = lambda: "test-api-key"
+    app.dependency_overrides[get_current_user_id] = lambda: "test-user-id"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def authenticated_client_with_db() -> AsyncGenerator[tuple[AsyncClient, AsyncSession], None]:
+    """Create an (client, mock_db_session) tuple with auth bypassed.
+
+    Use this when you need to configure specific mock return values on
+    the database session for each test case.
+    """
+    session = AsyncMock(spec=AsyncSession)
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    session.close = AsyncMock()
+    session.flush = AsyncMock()
+    session.add = MagicMock()
+
+    app.dependency_overrides[get_db_session] = lambda: session
+    app.dependency_overrides[verify_api_key] = lambda: "test-api-key"
+    app.dependency_overrides[get_current_user_id] = lambda: "test-user-id"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac, session
+
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.deps import get_db_session
-from apps.api.main import app
 from core.agents.reviewer import ReviewerAgent
 from core.orchestrator.state import (
     Severity,
@@ -85,22 +84,21 @@ class TestApproveEndpoint:
     """Tests for POST /runs/{id}/approve endpoint."""
 
     @pytest.mark.asyncio
-    async def test_approve_requires_auth(self) -> None:
+    async def test_approve_requires_auth(self, client: AsyncClient) -> None:
         """Approval endpoint requires authentication."""
-        async with AsyncClient(
-            transport=__import__("httpx").ASGITransport(app=app),
-            base_url="http://test",
-        ) as client:
-            response = await client.post(
-                "/api/v1/runs/run-123/approve",
-                json={"approved": True},
-            )
-            assert response.status_code in (401, 403)
+        response = await client.post(
+            "/api/v1/runs/run-123/approve",
+            json={"approved": True},
+        )
+        assert response.status_code in (401, 403)
 
     @pytest.mark.asyncio
-    async def test_approve_run_success(self) -> None:
+    async def test_approve_run_success(
+        self,
+        authenticated_client_with_db: tuple[AsyncClient, AsyncSession],
+    ) -> None:
         """Successfully approve a waiting_approval run."""
-        from datetime import UTC, datetime
+        client, mock_db = authenticated_client_with_db
 
         mock_run = MagicMock()
         mock_run.id = "run-123"
@@ -113,33 +111,23 @@ class TestApproveEndpoint:
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_run
-
-        mock_db = AsyncMock(spec=AsyncSession)
         mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.flush = AsyncMock()
 
-        app.dependency_overrides[get_db_session] = lambda: mock_db
+        response = await client.post(
+            "/api/v1/runs/run-123/approve",
+            json={"approved": True, "notes": "Looks safe"},
+        )
 
-        try:
-            async with AsyncClient(
-                transport=__import__("httpx").ASGITransport(app=app),
-                base_url="http://test",
-            ) as client:
-                response = await client.post(
-                    "/api/v1/runs/run-123/approve",
-                    json={"approved": True, "notes": "Looks safe"},
-                    headers={"X-API-Key": "change-me-in-production"},
-                )
-
-                assert response.status_code == 200
-                assert mock_run.status == "running"
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
+        assert mock_run.status == "running"
 
     @pytest.mark.asyncio
-    async def test_reject_run(self) -> None:
+    async def test_reject_run(
+        self,
+        authenticated_client_with_db: tuple[AsyncClient, AsyncSession],
+    ) -> None:
         """Reject a waiting_approval run."""
-        from datetime import UTC, datetime
+        client, mock_db = authenticated_client_with_db
 
         mock_run = MagicMock()
         mock_run.id = "run-456"
@@ -152,33 +140,23 @@ class TestApproveEndpoint:
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_run
-
-        mock_db = AsyncMock(spec=AsyncSession)
         mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.flush = AsyncMock()
 
-        app.dependency_overrides[get_db_session] = lambda: mock_db
+        response = await client.post(
+            "/api/v1/runs/run-456/approve",
+            json={"approved": False, "notes": "Security risk"},
+        )
 
-        try:
-            async with AsyncClient(
-                transport=__import__("httpx").ASGITransport(app=app),
-                base_url="http://test",
-            ) as client:
-                response = await client.post(
-                    "/api/v1/runs/run-456/approve",
-                    json={"approved": False, "notes": "Security risk"},
-                    headers={"X-API-Key": "change-me-in-production"},
-                )
-
-                assert response.status_code == 200
-                assert mock_run.status == "failed"
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 200
+        assert mock_run.status == "failed"
 
     @pytest.mark.asyncio
-    async def test_approve_non_waiting_run_fails(self) -> None:
+    async def test_approve_non_waiting_run_fails(
+        self,
+        authenticated_client_with_db: tuple[AsyncClient, AsyncSession],
+    ) -> None:
         """Cannot approve a run that isn't in waiting_approval state."""
-        from datetime import UTC, datetime
+        client, mock_db = authenticated_client_with_db
 
         mock_run = MagicMock()
         mock_run.id = "run-789"
@@ -188,23 +166,11 @@ class TestApproveEndpoint:
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_run
-
-        mock_db = AsyncMock(spec=AsyncSession)
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        app.dependency_overrides[get_db_session] = lambda: mock_db
+        response = await client.post(
+            "/api/v1/runs/run-789/approve",
+            json={"approved": True},
+        )
 
-        try:
-            async with AsyncClient(
-                transport=__import__("httpx").ASGITransport(app=app),
-                base_url="http://test",
-            ) as client:
-                response = await client.post(
-                    "/api/v1/runs/run-789/approve",
-                    json={"approved": True},
-                    headers={"X-API-Key": "change-me-in-production"},
-                )
-
-                assert response.status_code == 409
-        finally:
-            app.dependency_overrides.clear()
+        assert response.status_code == 409

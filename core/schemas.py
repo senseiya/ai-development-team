@@ -37,6 +37,33 @@ class RunResponse(BaseModel):
     updated_at: datetime
 
 
+class AgentStepDetail(BaseModel):
+    """Per-agent timing detail for run breakdown."""
+
+    agent: str
+    status: str = "completed"
+    duration_s: float = 0.0
+    tokens_used: int = 0
+    provider: str = ""
+    model: str = ""
+    error: str | None = None
+
+
+class RunDetailResponse(BaseModel):
+    """Detailed run response with per-agent breakdown."""
+
+    id: str
+    task_description: str
+    status: str
+    generated_code: str | None = None
+    tokens_used: int = 0
+    created_at: datetime
+    updated_at: datetime
+    agents: list[AgentStepDetail] = []
+    total_duration_s: float = 0.0
+    pr_url: str | None = None
+
+
 class ErrorResponse(BaseModel):
     """Schema for error responses."""
 

@@ -7,6 +7,8 @@ With conditional edges:
   - tester → coder (if tests fail AND iteration_count < MAX_ITERATIONS)
   - reviewer → END (if severity=critical → waiting_approval)
   - any node → failed (on unhandled exception)
+
+Phase 7: Each node is instrumented with AgentTracer for Prometheus metrics.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from core.agents.documentation import DocumentationAgent
 from core.agents.planner import PlannerAgent
 from core.agents.reviewer import ReviewerAgent
 from core.agents.tester import TesterAgent
+from core.observability.tracing import AgentTracer
 from core.orchestrator.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -29,33 +32,73 @@ MAX_ITERATIONS = 3
 
 
 async def _planner_node(state: AgentState) -> AgentState:
-    """Run the Planner agent."""
+    """Run the Planner agent with tracing."""
     agent = PlannerAgent()
-    return await agent.run(state)
+    run_id = state.get("run_id", "")
+    with AgentTracer("planner", run_id) as tracer:
+        result = await agent.run(state)
+        tracer.record_tokens(
+            result.get("tokens_used", 0),
+            result.get("provider_used", ""),
+            result.get("model_used", ""),
+        )
+        return result
 
 
 async def _coder_node(state: AgentState) -> AgentState:
-    """Run the Coder agent."""
+    """Run the Coder agent with tracing."""
     agent = CoderAgent()
-    return await agent.run(state)
+    run_id = state.get("run_id", "")
+    with AgentTracer("coder", run_id) as tracer:
+        result = await agent.run(state)
+        tracer.record_tokens(
+            result.get("tokens_used", 0),
+            result.get("provider_used", ""),
+            result.get("model_used", ""),
+        )
+        return result
 
 
 async def _tester_node(state: AgentState) -> AgentState:
-    """Run the Tester agent."""
+    """Run the Tester agent with tracing."""
     agent = TesterAgent()
-    return await agent.run(state)
+    run_id = state.get("run_id", "")
+    with AgentTracer("tester", run_id) as tracer:
+        result = await agent.run(state)
+        tracer.record_tokens(
+            result.get("tokens_used", 0),
+            result.get("provider_used", ""),
+            result.get("model_used", ""),
+        )
+        return result
 
 
 async def _reviewer_node(state: AgentState) -> AgentState:
-    """Run the Reviewer agent."""
+    """Run the Reviewer agent with tracing."""
     agent = ReviewerAgent()
-    return await agent.run(state)
+    run_id = state.get("run_id", "")
+    with AgentTracer("reviewer", run_id) as tracer:
+        result = await agent.run(state)
+        tracer.record_tokens(
+            result.get("tokens_used", 0),
+            result.get("provider_used", ""),
+            result.get("model_used", ""),
+        )
+        return result
 
 
 async def _documentation_node(state: AgentState) -> AgentState:
-    """Run the Documentation agent."""
+    """Run the Documentation agent with tracing."""
     agent = DocumentationAgent()
-    return await agent.run(state)
+    run_id = state.get("run_id", "")
+    with AgentTracer("documentation", run_id) as tracer:
+        result = await agent.run(state)
+        tracer.record_tokens(
+            result.get("tokens_used", 0),
+            result.get("provider_used", ""),
+            result.get("model_used", ""),
+        )
+        return result
 
 
 def _should_retry_coder(state: AgentState) -> Literal["coder", "reviewer"]:

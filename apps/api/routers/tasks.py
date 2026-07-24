@@ -1,6 +1,7 @@
 """Tasks router - POST /tasks endpoint.
 
 Creates a workspace directory for each run and persists file changes.
+Phase 7: Instrumented with RunTracer for full run timing.
 """
 
 import tempfile
@@ -13,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.deps import get_db_session, verify_api_key
 from core.agents.coder import CoderAgent
+from core.observability.tracing import trace_run
 from core.orchestrator.state import create_initial_state
 from core.router.model_router import ModelRouter
 from core.router.registry import seed_model_profiles
@@ -83,50 +85,56 @@ async def create_task(
     )
     state["workspace_path"] = str(workspace_path)
 
-    try:
-        result = await agent.run(state)
+    with trace_run(run_id) as run_tracer:
+        try:
+            result = await agent.run(state)
 
-        # Update run with results
-        run.status = result.get("status", "completed")
-        run.generated_code = result.get("generated_code")
-        run.tokens_used = result.get("tokens_used", 0)
-        run.updated_at = datetime.now(timezone.utc)
+            # Update run with results
+            run.status = result.get("status", "completed")
+            run.generated_code = result.get("generated_code")
+            run.tokens_used = result.get("tokens_used", 0)
+            run.updated_at = datetime.now(timezone.utc)
 
-        # Persist file changes to database
-        files_changed = result.get("files_changed", [])
-        for fc in files_changed:
-            file_change = FileChange(
-                run_id=run_id,
-                file_path=fc.file_path,
-                action=fc.action,
-                content=fc.content[:10000] if fc.content else None,  # Limit content size
-                diff=fc.diff[:10000] if fc.diff else None,
+            # Persist file changes to database
+            files_changed = result.get("files_changed", [])
+            for fc in files_changed:
+                file_change = FileChange(
+                    run_id=run_id,
+                    file_path=fc.file_path,
+                    action=fc.action,
+                    content=fc.content[:10000] if fc.content else None,  # Limit content size
+                    diff=fc.diff[:10000] if fc.diff else None,
+                )
+                db.add(file_change)
+            await db.flush()
+
+            if result.get("status") == "failed":
+                run_tracer.status = "failed"
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Task execution failed: {result.get('error', 'Unknown error')}",
+                )
+
+            run_tracer.status = result.get("status", "completed")
+
+            return RunResponse(
+                id=run.id,
+                task_description=run.task_description,
+                status=run.status,
+                generated_code=run.generated_code,
+                tokens_used=run.tokens_used,
+                created_at=run.created_at,
+                updated_at=run.updated_at,
             )
-            db.add(file_change)
-        await db.flush()
 
-        if result.get("status") == "failed":
+        except HTTPException:
+            run_tracer.status = "failed"
+            raise
+        except Exception as e:
+            run.status = "failed"
+            run.updated_at = datetime.now(timezone.utc)
+            run_tracer.status = "failed"
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Task execution failed: {result.get('error', 'Unknown error')}",
+                detail=f"Unexpected error: {str(e)}",
             )
-
-        return RunResponse(
-            id=run.id,
-            task_description=run.task_description,
-            status=run.status,
-            generated_code=run.generated_code,
-            tokens_used=run.tokens_used,
-            created_at=run.created_at,
-            updated_at=run.updated_at,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        run.status = "failed"
-        run.updated_at = datetime.now(timezone.utc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {str(e)}",
-        )

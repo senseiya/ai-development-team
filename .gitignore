@@ -1,5 +1,7 @@
 # Environment
 .env
+.env.*
+!.env.example
 .venv/
 venv/
 env/
@@ -22,6 +24,9 @@ build/
 
 # OpenCode
 .opencode/
+.opencode/auth.json
+.opencode/*.local.*
+!opencode/
 
 # Testing
 .coverage
@@ -31,9 +36,13 @@ htmlcov/
 
 # Docker
 docker-compose.override.yml
-
-# Ollama
+pgdata/
+redisdata/
+ollamadata/
 ollama_data/
+
+# Node
+node_modules/
 
 # OS
 .DS_Store

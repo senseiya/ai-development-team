@@ -366,3 +366,47 @@ class TestRegistrySeed:
 
         assert count == 0
         mock_db.add.assert_not_called()
+
+
+class TestModelIdPassthrough:
+    """Regression: model_id must be passed to the provider, not ignored."""
+
+    @pytest.mark.asyncio
+    async def test_call_passes_model_id_to_provider(self) -> None:
+        """Router selects 'specific-model' but provider default is 'default-model'.
+
+        If the model_id isn't forwarded, the provider silently uses its
+        default and the wrong model is called. This test catches that.
+        """
+        profile = _make_mock_profile(
+            model_id="specific-model",
+            provider="openrouter",
+            priority=10,
+        )
+        db = _make_mock_db(profile)
+        router = ModelRouter(db)
+
+        mock_response = _make_llm_response(model="specific-model")
+
+        captured_kwargs: dict = {}
+
+        async def capturing_complete(**kwargs: object) -> LLMResponse:
+            captured_kwargs.update(kwargs)
+            return mock_response
+
+        mock_provider = MagicMock()
+        mock_provider.complete = capturing_complete
+
+        with patch(
+            "core.router.model_router.get_provider",
+            return_value=mock_provider,
+        ) as mock_get_provider:
+            await router.call(
+                capability=ModelCapability.CODE_GENERATION,
+                prompt="test prompt",
+            )
+
+            mock_get_provider.assert_called_once_with(
+                "openrouter",
+                model="specific-model",
+            )

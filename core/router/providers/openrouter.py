@@ -14,7 +14,7 @@ settings = get_settings()
 
 # OpenRouter-specific timeouts (remote API, network-dependent)
 OPENROUTER_TIMEOUT_CONNECT = 10.0
-OPENROUTER_TIMEOUT_READ = 120.0
+OPENROUTER_TIMEOUT_READ = 180.0
 OPENROUTER_TIMEOUT_WRITE = 10.0
 
 

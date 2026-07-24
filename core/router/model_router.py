@@ -172,7 +172,7 @@ class ModelRouter:
         for candidate in candidates:
             attempts.append(candidate)
             try:
-                provider = get_provider(candidate.provider)
+                provider = get_provider(candidate.provider, model=candidate.model_id)
                 response = await provider.complete(
                     prompt=prompt,
                     system_prompt=system_prompt,

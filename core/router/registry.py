@@ -25,8 +25,8 @@ SEED_MODELS: list[dict] = [
     # --- code_generation ---
     {
         "provider": "openrouter",
-        "model_id": "qwen/qwen-2.5-coder-32b-instruct:free",
-        "display_name": "Qwen 2.5 Coder 32B (Free)",
+        "model_id": "google/gemma-4-26b-a4b-it:free",
+        "display_name": "Google Gemma 4 26B (Free)",
         "capabilities": ["code_generation"],
         "cost_per_1k_input": 0.0,
         "cost_per_1k_output": 0.0,
@@ -35,8 +35,8 @@ SEED_MODELS: list[dict] = [
     },
     {
         "provider": "ollama",
-        "model_id": "qwen2.5-coder:7b",
-        "display_name": "Qwen 2.5 Coder 7B (Local)",
+        "model_id": "qwen3.5:9b",
+        "display_name": "Qwen 3.5 9B (Local)",
         "capabilities": ["code_generation"],
         "cost_per_1k_input": 0.0,
         "cost_per_1k_output": 0.0,
@@ -46,8 +46,8 @@ SEED_MODELS: list[dict] = [
     # --- reasoning ---
     {
         "provider": "openrouter",
-        "model_id": "qwen/qwen-2.5-72b-instruct:free",
-        "display_name": "Qwen 2.5 72B Instruct (Free)",
+        "model_id": "google/gemma-4-31b-it:free",
+        "display_name": "Google Gemma 4 31B (Free)",
         "capabilities": ["reasoning"],
         "cost_per_1k_input": 0.0,
         "cost_per_1k_output": 0.0,
@@ -56,8 +56,8 @@ SEED_MODELS: list[dict] = [
     },
     {
         "provider": "ollama",
-        "model_id": "qwen2.5-coder:7b",
-        "display_name": "Qwen 2.5 Coder 7B (Local)",
+        "model_id": "qwen3.5:9b",
+        "display_name": "Qwen 3.5 9B (Local)",
         "capabilities": ["reasoning"],
         "cost_per_1k_input": 0.0,
         "cost_per_1k_output": 0.0,
@@ -67,18 +67,18 @@ SEED_MODELS: list[dict] = [
     # --- code_review ---
     {
         "provider": "openrouter",
-        "model_id": "deepseek/deepseek-chat:free",
-        "display_name": "DeepSeek Chat V3 (Free)",
+        "model_id": "openai/gpt-oss-20b:free",
+        "display_name": "OpenAI GPT-OSS 20B (Free)",
         "capabilities": ["code_review"],
         "cost_per_1k_input": 0.0,
         "cost_per_1k_output": 0.0,
-        "max_context": 65536,
+        "max_context": 32768,
         "priority": 10,
     },
     {
         "provider": "ollama",
-        "model_id": "qwen2.5-coder:7b",
-        "display_name": "Qwen 2.5 Coder 7B (Local)",
+        "model_id": "qwen3.5:9b",
+        "display_name": "Qwen 3.5 9B (Local)",
         "capabilities": ["code_review"],
         "cost_per_1k_input": 0.0,
         "cost_per_1k_output": 0.0,
@@ -88,8 +88,8 @@ SEED_MODELS: list[dict] = [
     # --- summarization ---
     {
         "provider": "openrouter",
-        "model_id": "qwen/qwen-2.5-coder-7b-instruct:free",
-        "display_name": "Qwen 2.5 Coder 7B Instruct (Free)",
+        "model_id": "nvidia/nemotron-3-super-120b-a12b:free",
+        "display_name": "NVIDIA Nemotron 3 Super 120B (Free)",
         "capabilities": ["summarization"],
         "cost_per_1k_input": 0.0,
         "cost_per_1k_output": 0.0,
@@ -98,8 +98,8 @@ SEED_MODELS: list[dict] = [
     },
     {
         "provider": "ollama",
-        "model_id": "qwen2.5-coder:7b",
-        "display_name": "Qwen 2.5 Coder 7B (Local)",
+        "model_id": "qwen3.5:9b",
+        "display_name": "Qwen 3.5 9B (Local)",
         "capabilities": ["summarization"],
         "cost_per_1k_input": 0.0,
         "cost_per_1k_output": 0.0,

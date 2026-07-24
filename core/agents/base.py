@@ -2,6 +2,8 @@
 
 Every agent inherits from BaseAgent, declares its capability,
 and implements run(AgentState) -> AgentState.
+
+Phase 8: Integrates LLM cache and cost tracking.
 """
 
 from __future__ import annotations
@@ -48,10 +50,10 @@ class BaseAgent(ABC):
         state: AgentState | None = None,
         **kwargs: Any,
     ) -> LLMResponse:
-        """Call the LLM through the Model Router.
+        """Call the LLM through the Model Router, with optional caching.
 
-        The router is read from state["router"]. If no router is
-        available, falls back to the provider factory.
+        Phase 8: Checks the LLM cache first. On miss, calls the model
+        and caches the response. Also records token usage for cost tracking.
 
         Args:
             prompt: The user prompt.
@@ -62,6 +64,27 @@ class BaseAgent(ABC):
         Returns:
             LLMResponse from the model.
         """
+        # Phase 8: Try cache first (skip if temperature != 0 or caller opts out)
+        use_cache = kwargs.get("use_cache", True)
+        temperature = kwargs.get("temperature", 0.7)
+        if use_cache and temperature == 0.0:
+            try:
+                from core.cost.cache import get_llm_cache
+
+                cache = get_llm_cache()
+                model_name = state.get("model_used", "") if state else ""
+                cached = await cache.get(model_name, system_prompt, prompt)
+                if cached is not None:
+                    logger.info(
+                        "Agent '%s' got cached LLM response (model=%s)",
+                        self.name,
+                        model_name,
+                    )
+                    return cached
+            except Exception as e:
+                logger.debug("Cache lookup failed: %s", e)
+
+        # Call through router or fallback
         router = state.get("router") if state else None
 
         if router is not None:
@@ -80,16 +103,29 @@ class BaseAgent(ABC):
                 result.fallback_used,
                 result.response.latency_ms or 0,
             )
-            return result.response
+            response = result.response
+        else:
+            # Fallback to provider factory (backward compatibility)
+            from core.router.providers import get_provider
 
-        # Fallback to provider factory (backward compatibility)
-        from core.router.providers import get_provider
+            provider = get_provider()
+            response = await provider.complete(
+                prompt=prompt,
+                system_prompt=system_prompt,
+            )
 
-        provider = get_provider()
-        return await provider.complete(
-            prompt=prompt,
-            system_prompt=system_prompt,
-        )
+        # Phase 8: Cache the response (only for deterministic calls)
+        if use_cache and temperature == 0.0:
+            try:
+                from core.cost.cache import get_llm_cache
+
+                cache = get_llm_cache()
+                model_name = state.get("model_used", "") if state else response.model
+                await cache.set(model_name, system_prompt, prompt, response)
+            except Exception as e:
+                logger.debug("Cache set failed: %s", e)
+
+        return response
 
     def _add_message(
         self,
@@ -120,6 +156,8 @@ class BaseAgent(ABC):
     ) -> None:
         """Accumulate token usage and cost in the state.
 
+        Phase 8: Also checks budget enforcement.
+
         Args:
             state: The current AgentState (mutated in place).
             tokens: Number of tokens to add.
@@ -127,3 +165,19 @@ class BaseAgent(ABC):
         """
         state["tokens_used"] = state.get("tokens_used", 0) + tokens
         state["cost_usd"] = state.get("cost_usd", 0.0) + cost
+
+        # Phase 8: Check budget
+        try:
+            from core.cost.budget import BudgetExceeded, check_budget, get_budget_from_state
+
+            budget = get_budget_from_state(state)
+            check_budget(
+                run_id=state.get("run_id", ""),
+                cost_usd=state["cost_usd"],
+                tokens_used=state["tokens_used"],
+                budget=budget,
+            )
+        except BudgetExceeded as e:
+            logger.warning("Budget exceeded for run %s: %s", state.get("run_id"), e)
+            state["status"] = "failed"
+            state["error"] = str(e)

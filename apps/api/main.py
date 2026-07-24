@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import generate_latest
 from starlette.responses import Response
 
-from apps.api.routers import auth, models, runs, tasks, ws
+from apps.api.routers import auth, costs, models, runs, tasks, ws
 from core.config import get_settings
 from core.observability import (
     APP_INFO,
@@ -60,6 +60,7 @@ app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
 app.include_router(runs.router, prefix="/api/v1", tags=["runs"])
 app.include_router(models.router, prefix="/api/v1", tags=["models"])
+app.include_router(costs.router, prefix="/api/v1", tags=["costs"])
 app.include_router(ws.router, tags=["websocket"])
 app.include_router(health_router)
 

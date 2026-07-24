@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
 
+    # Budget (Phase 8)
+    BUDGET_MAX_COST_USD: float = 1.0
+    BUDGET_MAX_TOKENS: int = 100_000
+    LLM_CACHE_TTL_SECONDS: int = 3600
+
 
 @lru_cache
 def get_settings() -> Settings:

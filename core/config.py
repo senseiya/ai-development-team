@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     )
 
     # PostgreSQL
-    DATABASE_URL: str = "postgresql+asyncpg://ai_team:ai_team_secret@localhost:5432/ai_development_team"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://ai_team:ai_team_secret@localhost:5432/ai_development_team"
+    )
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"

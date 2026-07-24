@@ -32,8 +32,7 @@ class BudgetExceededError(Exception):
         self.current = current
         self.limit = limit
         super().__init__(
-            f"Budget exceeded for run {run_id}: {reason} "
-            f"({current:.6f} > {limit:.6f})"
+            f"Budget exceeded for run {run_id}: {reason} ({current:.6f} > {limit:.6f})"
         )
 
 

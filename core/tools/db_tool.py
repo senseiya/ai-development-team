@@ -118,9 +118,7 @@ def _validate_read_only(query: str) -> None:
 
     if first_keyword not in ("SELECT", "WITH", "EXPLAIN"):
         if _MODIFYING_STATEMENTS.match(cleaned):
-            raise PermissionError(
-                f"Modifying queries are not allowed: {first_keyword}..."
-            )
+            raise PermissionError(f"Modifying queries are not allowed: {first_keyword}...")
         raise PermissionError(
             f"Only SELECT, WITH, and EXPLAIN queries are allowed. Got: {first_keyword}"
         )
@@ -161,7 +159,7 @@ async def execute_query(input_data: DBQueryInput) -> DBQueryOutput:
             columns = list(result.keys())
             rows_raw = result.fetchmany(input_data.limit + 1)
             truncated = len(rows_raw) > input_data.limit
-            rows = [dict(zip(columns, row, strict=False)) for row in rows_raw[:input_data.limit]]
+            rows = [dict(zip(columns, row, strict=False)) for row in rows_raw[: input_data.limit]]
 
         logger.info("Query returned %d rows (truncated=%s)", len(rows), truncated)
 
@@ -205,9 +203,7 @@ async def get_schema(input_data: DBSchemaInput) -> DBSchemaOutput:
             table_names = [row[0] for row in tables_result.fetchall()]
 
             if input_data.table_name:
-                table_names = [
-                    t for t in table_names if t == input_data.table_name
-                ]
+                table_names = [t for t in table_names if t == input_data.table_name]
 
             tables = []
             for table_name in table_names:

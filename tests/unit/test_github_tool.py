@@ -48,11 +48,11 @@ class TestGitHubClient:
 
         with patch.object(client, "_request", new_callable=AsyncMock) as mock_request:
             mock_request.side_effect = [
-                mock_branch,   # get_branch
-                mock_blob,     # create blob 1
-                mock_tree,     # create tree
-                mock_commit,   # create commit
-                MagicMock(),   # update ref
+                mock_branch,  # get_branch
+                mock_blob,  # create blob 1
+                mock_tree,  # create tree
+                mock_commit,  # create commit
+                MagicMock(),  # update ref
                 mock_branch_after,  # get_branch for sha
             ]
 

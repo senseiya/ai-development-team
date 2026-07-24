@@ -46,10 +46,10 @@ class TestPlannerAgent:
         agent = PlannerAgent()
         state = _make_state()
 
-        json_response = '''[
+        json_response = """[
             {"id": "1", "title": "Setup", "description": "Init project", "dependencies": []},
             {"id": "2", "title": "Implement", "description": "Write code", "dependencies": ["1"]}
-        ]'''
+        ]"""
 
         agent.call_llm = AsyncMock(return_value=_mock_llm_response(json_response))
         result = await agent.run(state)
@@ -66,9 +66,9 @@ class TestPlannerAgent:
         agent = PlannerAgent()
         state = _make_state()
 
-        json_response = '''```json
+        json_response = """```json
 [{"id": "1", "title": "Task", "description": "Do stuff", "dependencies": []}]
-```'''
+```"""
 
         agent.call_llm = AsyncMock(return_value=_mock_llm_response(json_response))
         result = await agent.run(state)
@@ -113,9 +113,7 @@ class TestCoderAgent:
         agent = CoderAgent()
         state = _make_state("Create a hello world function")
 
-        agent.call_llm = AsyncMock(
-            return_value=_mock_llm_response("def hello(): print('Hello')")
-        )
+        agent.call_llm = AsyncMock(return_value=_mock_llm_response("def hello(): print('Hello')"))
         result = await agent.run(state)
 
         assert result["generated_code"] == "def hello(): print('Hello')"
@@ -152,7 +150,7 @@ class TestTesterAgent:
         state = _make_state()
         state["generated_code"] = "def hello(): return 'world'"
 
-        test_json = '''{
+        test_json = """{
             "total": 2,
             "passed": 1,
             "failed": 1,
@@ -161,7 +159,7 @@ class TestTesterAgent:
                 {"test_name": "test_error", "passed": false, "output": "Failed"}
             ],
             "summary": "1 failing test"
-        }'''
+        }"""
 
         agent.call_llm = AsyncMock(return_value=_mock_llm_response(test_json))
         result = await agent.run(state)
@@ -214,7 +212,7 @@ class TestReviewerAgent:
         state = _make_state()
         state["generated_code"] = "password = 'hardcoded'"
 
-        review_json = '''{
+        review_json = """{
             "findings": [
                 {
                     "id": "f1",
@@ -225,7 +223,7 @@ class TestReviewerAgent:
                 }
             ],
             "summary": "Critical security issue found"
-        }'''
+        }"""
 
         agent.call_llm = AsyncMock(return_value=_mock_llm_response(review_json))
         result = await agent.run(state)
@@ -243,7 +241,7 @@ class TestReviewerAgent:
         state = _make_state()
         state["generated_code"] = "x = 1"
 
-        review_json = '''{
+        review_json = """{
             "findings": [
                 {
                     "id": "f1",
@@ -252,7 +250,7 @@ class TestReviewerAgent:
                     "description": "Consider adding docstring"
                 }
             ]
-        }'''
+        }"""
 
         agent.call_llm = AsyncMock(return_value=_mock_llm_response(review_json))
         result = await agent.run(state)

@@ -65,10 +65,7 @@ class PlannerAgent(BaseAgent):
             self._add_message(state, "No user request provided", "error")
             return state
 
-        prompt = (
-            f"Decompose the following request into a plan of subtasks:\n\n"
-            f"{user_request}"
-        )
+        prompt = f"Decompose the following request into a plan of subtasks:\n\n{user_request}"
 
         try:
             response = await self.call_llm(

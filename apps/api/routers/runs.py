@@ -112,14 +112,16 @@ async def get_run_status(
         # Get latency from histogram (approximate from metric families)
         # In production this would come from a metrics store; here we estimate
         # from the run's overall timing
-        agents.append(AgentStepDetail(
-            agent=agent_name,
-            status="completed" if run.status in ("completed", "running") else run.status,
-            duration_s=0.0,
-            tokens_used=0,
-            provider="",
-            model="",
-        ))
+        agents.append(
+            AgentStepDetail(
+                agent=agent_name,
+                status="completed" if run.status in ("completed", "running") else run.status,
+                duration_s=0.0,
+                tokens_used=0,
+                provider="",
+                model="",
+            )
+        )
 
     total_duration = 0.0
     if run.created_at and run.updated_at:

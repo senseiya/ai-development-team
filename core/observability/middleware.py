@@ -54,9 +54,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
                 (len(part) == 36 and part.count("-") == 4)
                 or (len(part) == 32 and all(c in "0123456789abcdef" for c in part))
                 or part.isdigit()
-                or (len(part) > 10 and "-" in part and all(
-                    c in "0123456789abcdef-" for c in part
-                ))
+                or (len(part) > 10 and "-" in part and all(c in "0123456789abcdef-" for c in part))
             )
             if is_uuid:
                 normalized.append("{id}")

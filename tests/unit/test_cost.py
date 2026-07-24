@@ -153,6 +153,7 @@ class TestLLMCache:
 
             # Now retrieve
             import json
+
             cached_data = response.model_dump()
             mock_redis.get = AsyncMock(return_value=json.dumps(cached_data))
             result = await cache.get("model", None, "prompt")

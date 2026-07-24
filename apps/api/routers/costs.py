@@ -74,9 +74,7 @@ async def get_cost_summary(
     total_tokens = row[1] or 0
 
     # Runs by status
-    status_result = await db.execute(
-        select(Run.status, func.count(Run.id)).group_by(Run.status)
-    )
+    status_result = await db.execute(select(Run.status, func.count(Run.id)).group_by(Run.status))
     runs_by_status = {row[0]: row[1] for row in status_result.all()}
 
     avg_tokens = total_tokens / total_runs if total_runs > 0 else 0.0

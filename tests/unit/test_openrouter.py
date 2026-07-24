@@ -51,9 +51,7 @@ class TestOpenRouterProvider:
             assert result.tokens_used == 25
 
     @pytest.mark.asyncio
-    async def test_complete_includes_system_prompt(
-        self, provider: OpenRouterProvider
-    ) -> None:
+    async def test_complete_includes_system_prompt(self, provider: OpenRouterProvider) -> None:
         """Test that system prompt is included in messages."""
         mock_response_data = {
             "choices": [{"message": {"content": "test"}, "finish_reason": "stop"}],
@@ -80,9 +78,7 @@ class TestOpenRouterProvider:
             assert messages[1]["role"] == "user"
 
     @pytest.mark.asyncio
-    async def test_complete_without_system_prompt(
-        self, provider: OpenRouterProvider
-    ) -> None:
+    async def test_complete_without_system_prompt(self, provider: OpenRouterProvider) -> None:
         """Test that completion works without system prompt."""
         mock_response_data = {
             "choices": [{"message": {"content": "test"}, "finish_reason": "stop"}],
@@ -119,9 +115,7 @@ class TestOpenRouterProvider:
         mock_client.aclose.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_close_skips_if_already_closed(
-        self, provider: OpenRouterProvider
-    ) -> None:
+    async def test_close_skips_if_already_closed(self, provider: OpenRouterProvider) -> None:
         """Test that close() skips if client is already closed."""
         mock_client = AsyncMock()
         mock_client.is_closed = True

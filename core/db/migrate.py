@@ -69,6 +69,7 @@ def run_migrations_if_needed() -> bool:
 
     # In production, check AUTO_MIGRATE env var
     import os
+
     if os.environ.get("AUTO_MIGRATE", "false").lower() in ("true", "1", "yes"):
         return run_migrations()
 

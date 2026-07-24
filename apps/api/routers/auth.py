@@ -122,9 +122,7 @@ async def register(
     """
     # Check for existing user
     result = await db.execute(
-        select(User).where(
-            (User.email == req.email) | (User.username == req.username)
-        )
+        select(User).where((User.email == req.email) | (User.username == req.username))
     )
     existing = result.scalar_one_or_none()
     if existing:
@@ -178,9 +176,7 @@ async def login(
     Raises:
         HTTPException: If credentials are invalid.
     """
-    result = await db.execute(
-        select(User).where(User.username == req.username)
-    )
+    result = await db.execute(select(User).where(User.username == req.username))
     user = result.scalar_one_or_none()
 
     if not user or not _verify_password(req.password, user.hashed_password):

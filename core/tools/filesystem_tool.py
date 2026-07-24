@@ -143,9 +143,7 @@ def _validate_path(file_path: str, workspace_path: str) -> Path:
     # Block dangerous patterns
     for pattern in _BLOCKED_PATTERNS:
         if pattern in file_path:
-            raise PermissionError(
-                f"Path contains blocked pattern '{pattern}': {file_path}"
-            )
+            raise PermissionError(f"Path contains blocked pattern '{pattern}': {file_path}")
 
     workspace = Path(workspace_path).resolve()
     target = (workspace / file_path).resolve()
@@ -200,9 +198,7 @@ def read_file(input_data: FileReadInput) -> FileReadOutput:
 
     size = target.stat().st_size
     if size > MAX_FILE_SIZE:
-        raise ValueError(
-            f"File too large: {size} bytes (max {MAX_FILE_SIZE})"
-        )
+        raise ValueError(f"File too large: {size} bytes (max {MAX_FILE_SIZE})")
 
     content = target.read_text(encoding="utf-8")
     logger.info("Read file: %s (%d bytes)", input_data.file_path, size)

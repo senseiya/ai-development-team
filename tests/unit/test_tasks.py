@@ -16,9 +16,7 @@ class TestCreateTaskEndpoint:
     """Tests for POST /api/v1/tasks endpoint."""
 
     @pytest.mark.asyncio
-    async def test_create_task_requires_api_key(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_create_task_requires_api_key(self, client: AsyncClient) -> None:
         """Test that creating a task requires API key."""
         response = await client.post(
             "/api/v1/tasks",
@@ -27,9 +25,7 @@ class TestCreateTaskEndpoint:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_create_task_rejects_invalid_api_key(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_create_task_rejects_invalid_api_key(self, client: AsyncClient) -> None:
         """Test that invalid API key is rejected."""
         response = await client.post(
             "/api/v1/tasks",
@@ -73,9 +69,7 @@ class TestCreateTaskEndpoint:
         """Test successful task creation with mocked LLM."""
         app.dependency_overrides[get_db_session] = lambda: mock_db_session
 
-        with patch(
-            "apps.api.routers.tasks.CoderAgent"
-        ) as mock_agent_cls:
+        with patch("apps.api.routers.tasks.CoderAgent") as mock_agent_cls:
             mock_instance = AsyncMock()
             mock_instance.run.return_value = {
                 "run_id": "test-run-id",
@@ -133,9 +127,7 @@ class TestGetRunEndpoint:
     """Tests for GET /api/v1/runs/{id} endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_run_requires_api_key(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_get_run_requires_api_key(self, client: AsyncClient) -> None:
         """Test that getting a run requires API key."""
         response = await client.get("/api/v1/runs/test-id")
         assert response.status_code == 401

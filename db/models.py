@@ -93,10 +93,7 @@ class RunCheckpoint(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<RunCheckpoint(run_id={self.run_id!r}, "
-            f"step={self.step})>"
-        )
+        return f"<RunCheckpoint(run_id={self.run_id!r}, step={self.step})>"
 
 
 class User(Base):

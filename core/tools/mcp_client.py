@@ -66,8 +66,7 @@ class MCPToolClient:
         """
         if tool_name not in self._tools:
             raise ValueError(
-                f"Unknown MCP tool: {tool_name}. "
-                f"Available: {list(self._tools.keys())}"
+                f"Unknown MCP tool: {tool_name}. Available: {list(self._tools.keys())}"
             )
 
         result_json = await _dispatch_tool(tool_name, arguments)

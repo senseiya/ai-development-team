@@ -29,7 +29,7 @@ class TestHITLTrigger:
         state = create_initial_state("r1", "Build API with hardcoded password")
         state["generated_code"] = "password = 'secret123'"
 
-        review_json = '''{
+        review_json = """{
             "findings": [
                 {
                     "id": "sec1",
@@ -39,7 +39,7 @@ class TestHITLTrigger:
                     "suggestion": "Use environment variables"
                 }
             ]
-        }'''
+        }"""
 
         agent.call_llm = AsyncMock(
             return_value=LLMResponse(
@@ -62,14 +62,14 @@ class TestHITLTrigger:
         state = create_initial_state("r1", "Build insecure API")
         state["generated_code"] = "eval(input())"
 
-        review_json = '''{
+        review_json = """{
             "findings": [
                 {"id": "f1", "severity": "critical",
                  "category": "security", "description": "Code injection"},
                 {"id": "f2", "severity": "critical",
                  "category": "security", "description": "XSS vulnerability"}
             ]
-        }'''
+        }"""
 
         agent.call_llm = AsyncMock(
             return_value=LLMResponse(content=review_json, model="t", provider="t", tokens_used=50)

@@ -35,10 +35,7 @@ def get_provider(
 
         return OllamaProvider(**kwargs)
     else:
-        raise ValueError(
-            f"Unknown provider: '{name}'. "
-            f"Available: 'openrouter', 'ollama'"
-        )
+        raise ValueError(f"Unknown provider: '{name}'. Available: 'openrouter', 'ollama'")
 
 
 def list_providers() -> list[str]:

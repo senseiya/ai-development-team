@@ -116,7 +116,7 @@ class TestSandboxSecurity:
             SandboxExecInput(
                 command=(
                     "python3 -c 'import urllib.request; "
-                    "urllib.request.urlopen(\"http://httpbin.org/get\", timeout=5)' "
+                    'urllib.request.urlopen("http://httpbin.org/get", timeout=5)\' '
                     "2>/dev/null; echo EXIT=$?"
                 ),
                 workspace_path=str(workspace),
@@ -268,18 +268,16 @@ class TestSandboxEscape:
                 if "python" in line.lower() or "sh" in line.lower():
                     continue  # Expected container processes
                 # Container should not have host-specific processes
-                assert "docker" not in line.lower(), (
-                    f"Container can see Docker processes: {line}"
-                )
+                assert "docker" not in line.lower(), f"Container can see Docker processes: {line}"
 
     def test_network_outbound_blocked(self, workspace: Path) -> None:
         """Try to make an outbound network connection."""
         result = execute_in_sandbox(
             SandboxExecInput(
                 command=(
-                    "python3 -c \"import socket; s=socket.socket(); "
+                    'python3 -c "import socket; s=socket.socket(); '
                     "s.settimeout(3); s.connect(('8.8.8.8', 53)); "
-                    "s.close()\" 2>/dev/null; echo EXIT=$?"
+                    's.close()" 2>/dev/null; echo EXIT=$?'
                 ),
                 workspace_path=str(workspace),
                 timeout=30,

@@ -56,9 +56,7 @@ class ModelRouter:
         """Load all enabled model profiles from database."""
         from db.models import ModelProfile
 
-        result = await self._db.execute(
-            select(ModelProfile).where(ModelProfile.enabled.is_(True))
-        )
+        result = await self._db.execute(select(ModelProfile).where(ModelProfile.enabled.is_(True)))
         rows = result.scalars().all()
 
         profiles = []
@@ -102,24 +100,17 @@ class ModelRouter:
         """
         profiles = await self._load_profiles()
 
-        matching = [
-            p for p in profiles if capability in p["capabilities"]
-        ]
+        matching = [p for p in profiles if capability in p["capabilities"]]
 
         if not matching:
-            raise ValueError(
-                f"No enabled model found for capability: {capability.value}"
-            )
+            raise ValueError(f"No enabled model found for capability: {capability.value}")
 
         if max_cost is not None:
-            matching = [
-                p for p in matching if p["cost_per_1k_input"] <= max_cost
-            ]
+            matching = [p for p in matching if p["cost_per_1k_input"] <= max_cost]
 
             if not matching:
                 raise ValueError(
-                    f"No model for '{capability.value}' within "
-                    f"cost limit {max_cost}/1k tokens"
+                    f"No model for '{capability.value}' within cost limit {max_cost}/1k tokens"
                 )
 
         if prefer_local:

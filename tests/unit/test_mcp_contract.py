@@ -147,11 +147,14 @@ class TestMCPClientContract:
     async def test_client_returns_json(self) -> None:
         """Client returns valid JSON from tool calls."""
         client = MCPToolClient()
-        result = await client.call("compute_diff", {
-            "original": "a\n",
-            "modified": "b\n",
-            "file_path": "test.txt",
-        })
+        result = await client.call(
+            "compute_diff",
+            {
+                "original": "a\n",
+                "modified": "b\n",
+                "file_path": "test.txt",
+            },
+        )
         assert isinstance(result, dict)
         assert "diff" in result
         assert "hunks" in result
@@ -186,9 +189,7 @@ class TestMCPServerInteroperability:
         """All MCP tools must have descriptions."""
         for tool in MCP_TOOLS:
             assert tool.description, f"Tool {tool.name} missing description"
-            assert len(tool.description) > 10, (
-                f"Tool {tool.name} description too short"
-            )
+            assert len(tool.description) > 10, f"Tool {tool.name} description too short"
 
     def test_tools_have_names(self) -> None:
         """All MCP tools must have valid names."""
@@ -237,12 +238,8 @@ def assert_schemas_match(
 
     # Check properties exist
     missing_props = set(model_props.keys()) - set(mcp_props.keys())
-    assert not missing_props, (
-        f"{tool_name}: MCP schema missing properties: {missing_props}"
-    )
+    assert not missing_props, f"{tool_name}: MCP schema missing properties: {missing_props}"
 
     # No extra properties (beyond what model defines)
     extra_props = set(mcp_props.keys()) - set(model_props.keys())
-    assert not extra_props, (
-        f"{tool_name}: MCP schema has extra properties: {extra_props}"
-    )
+    assert not extra_props, f"{tool_name}: MCP schema has extra properties: {extra_props}"

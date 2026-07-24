@@ -74,12 +74,9 @@ class DocumentationAgent(BaseAgent):
         if review_findings:
             findings_list = []
             for f in review_findings:
-                findings_list.append(
-                    f"- [{f.severity.value}] {f.category}: {f.description}"
-                )
-            findings_summary = (
-                "\n\nReview findings to address in documentation:\n"
-                + "\n".join(findings_list)
+                findings_list.append(f"- [{f.severity.value}] {f.category}: {f.description}")
+            findings_summary = "\n\nReview findings to address in documentation:\n" + "\n".join(
+                findings_list
             )
 
         files_summary = ""
@@ -154,12 +151,15 @@ class DocumentationAgent(BaseAgent):
             branch_name = f"ai-dev/{run_id}"
 
             # Create branch via MCP
-            branch_result = await self._mcp.call("github_create_branch", {
-                "repo_owner": repo_owner,
-                "repo_name": repo_name,
-                "branch_name": branch_name,
-                "base_branch": "main",
-            })
+            branch_result = await self._mcp.call(
+                "github_create_branch",
+                {
+                    "repo_owner": repo_owner,
+                    "repo_name": repo_name,
+                    "branch_name": branch_name,
+                    "base_branch": "main",
+                },
+            )
             self._add_message(
                 state,
                 f"Created branch: {branch_result.get('branch_name', branch_name)}",
@@ -170,29 +170,28 @@ class DocumentationAgent(BaseAgent):
             commit_files = []
             for fc in files_changed:
                 if fc.content:
-                    commit_files.append(
-                        {"path": fc.file_path, "content": fc.content}
-                    )
+                    commit_files.append({"path": fc.file_path, "content": fc.content})
 
             # Add documentation file
             documentation = state.get("documentation", "")
             if documentation:
-                commit_files.append(
-                    {"path": "README.md", "content": documentation}
-                )
+                commit_files.append({"path": "README.md", "content": documentation})
 
             if not commit_files:
                 self._add_message(state, "No files to commit", "warning")
                 return
 
             # Commit via MCP
-            commit_result = await self._mcp.call("github_create_commit", {
-                "repo_owner": repo_owner,
-                "repo_name": repo_name,
-                "branch_name": branch_name,
-                "message": f"feat: AI-generated code for run {run_id}",
-                "files": commit_files,
-            })
+            commit_result = await self._mcp.call(
+                "github_create_commit",
+                {
+                    "repo_owner": repo_owner,
+                    "repo_name": repo_name,
+                    "branch_name": branch_name,
+                    "message": f"feat: AI-generated code for run {run_id}",
+                    "files": commit_files,
+                },
+            )
             sha = commit_result.get("sha", "")[:7]
             self._add_message(
                 state,
@@ -200,14 +199,17 @@ class DocumentationAgent(BaseAgent):
             )
 
             # Create PR via MCP
-            pr_result = await self._mcp.call("github_create_pr", {
-                "repo_owner": repo_owner,
-                "repo_name": repo_name,
-                "head_branch": branch_name,
-                "base_branch": "main",
-                "title": f"AI Dev: {state.get('user_request', '')[:50]}",
-                "body": documentation[:4000] if documentation else "Auto-generated PR",
-            })
+            pr_result = await self._mcp.call(
+                "github_create_pr",
+                {
+                    "repo_owner": repo_owner,
+                    "repo_name": repo_name,
+                    "head_branch": branch_name,
+                    "base_branch": "main",
+                    "title": f"AI Dev: {state.get('user_request', '')[:50]}",
+                    "body": documentation[:4000] if documentation else "Auto-generated PR",
+                },
+            )
             state["pr_url"] = pr_result.get("url", "")
             self._add_message(
                 state,

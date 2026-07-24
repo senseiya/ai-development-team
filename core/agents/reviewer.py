@@ -175,16 +175,16 @@ class ReviewerAgent(BaseAgent):
 
         # Fallback: single finding from raw text
         has_critical = any(
-            word in text.lower()
-            for word in ["critical", "vulnerability", "security", "injection"]
+            word in text.lower() for word in ["critical", "vulnerability", "security", "injection"]
         )
         has_warning = any(
-            word in text.lower()
-            for word in ["warning", "issue", "bug", "error", "problem"]
+            word in text.lower() for word in ["warning", "issue", "bug", "error", "problem"]
         )
 
-        severity = Severity.CRITICAL if has_critical else (
-            Severity.WARNING if has_warning else Severity.INFO
+        severity = (
+            Severity.CRITICAL
+            if has_critical
+            else (Severity.WARNING if has_warning else Severity.INFO)
         )
 
         return [

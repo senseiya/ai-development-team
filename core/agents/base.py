@@ -95,8 +95,7 @@ class BaseAgent(ABC):
                 **kwargs,
             )
             logger.info(
-                "Agent '%s' used model '%s' via provider '%s' "
-                "(fallback=%s, latency=%.1fms)",
+                "Agent '%s' used model '%s' via provider '%s' (fallback=%s, latency=%.1fms)",
                 self.name,
                 result.selected.model_id,
                 result.selected.provider,

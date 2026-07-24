@@ -59,9 +59,7 @@ class TestPrometheusMetrics:
         before = AGENT_TOKENS_TOTAL.labels(
             agent="test", provider="openrouter", model="qwen"
         )._value.get()
-        AGENT_TOKENS_TOTAL.labels(
-            agent="test", provider="openrouter", model="qwen"
-        ).inc(100)
+        AGENT_TOKENS_TOTAL.labels(agent="test", provider="openrouter", model="qwen").inc(100)
         after = AGENT_TOKENS_TOTAL.labels(
             agent="test", provider="openrouter", model="qwen"
         )._value.get()
@@ -91,9 +89,7 @@ class TestPrometheusMetrics:
 
     def test_llm_calls_total(self) -> None:
         """LLM_CALLS_TOTAL should increment."""
-        LLM_CALLS_TOTAL.labels(
-            provider="openrouter", model="qwen", status="success"
-        ).inc()
+        LLM_CALLS_TOTAL.labels(provider="openrouter", model="qwen", status="success").inc()
 
     def test_sandbox_metrics(self) -> None:
         """Sandbox metrics should work."""
@@ -107,9 +103,7 @@ class TestPrometheusMetrics:
 
     def test_http_metrics(self) -> None:
         """HTTP metrics should work."""
-        HTTP_REQUESTS_TOTAL.labels(
-            method="GET", endpoint="/health", status_code="200"
-        ).inc()
+        HTTP_REQUESTS_TOTAL.labels(method="GET", endpoint="/health", status_code="200").inc()
         HTTP_REQUEST_LATENCY.labels(method="GET", endpoint="/health").observe(0.1)
 
 

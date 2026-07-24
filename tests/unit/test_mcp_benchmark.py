@@ -38,11 +38,13 @@ class TestMCPOverheadBenchmark:
         # Direct call (sync)
         start = time.perf_counter()
         for i in range(100):
-            write_file(FileWriteInput(
-                file_path=f"bench_direct_{i}.py",
-                content="x = 1\n" * 100,
-                workspace_path=str(workspace),
-            ))
+            write_file(
+                FileWriteInput(
+                    file_path=f"bench_direct_{i}.py",
+                    content="x = 1\n" * 100,
+                    workspace_path=str(workspace),
+                )
+            )
         direct_ms = (time.perf_counter() - start) * 1000
 
         # MCP call (async)
@@ -50,11 +52,14 @@ class TestMCPOverheadBenchmark:
 
         async def run_mcp() -> None:
             for i in range(100):
-                await client.call("write_file", {
-                    "file_path": f"bench_mcp_{i}.py",
-                    "content": "x = 1\n" * 100,
-                    "workspace_path": str(workspace),
-                })
+                await client.call(
+                    "write_file",
+                    {
+                        "file_path": f"bench_mcp_{i}.py",
+                        "content": "x = 1\n" * 100,
+                        "workspace_path": str(workspace),
+                    },
+                )
 
         start = time.perf_counter()
         asyncio.run(run_mcp())
@@ -68,19 +73,19 @@ class TestMCPOverheadBenchmark:
         print(f"  Overhead: {overhead_pct:+.1f}%")
 
         # MCP overhead should be < 500% (generous for in-process)
-        assert overhead_pct < 500, (
-            f"MCP overhead too high: {overhead_pct:.1f}%"
-        )
+        assert overhead_pct < 500, f"MCP overhead too high: {overhead_pct:.1f}%"
 
     def test_read_file_direct_vs_mcp(self, workspace: Path) -> None:
         """Benchmark read_file: direct call vs MCP client."""
         # Direct call (sync)
         start = time.perf_counter()
         for _ in range(100):
-            read_file(FileReadInput(
-                file_path="bench.py",
-                workspace_path=str(workspace),
-            ))
+            read_file(
+                FileReadInput(
+                    file_path="bench.py",
+                    workspace_path=str(workspace),
+                )
+            )
         direct_ms = (time.perf_counter() - start) * 1000
 
         # MCP call (async)
@@ -88,10 +93,13 @@ class TestMCPOverheadBenchmark:
 
         async def run_mcp() -> None:
             for _ in range(100):
-                await client.call("read_file", {
-                    "file_path": "bench.py",
-                    "workspace_path": str(workspace),
-                })
+                await client.call(
+                    "read_file",
+                    {
+                        "file_path": "bench.py",
+                        "workspace_path": str(workspace),
+                    },
+                )
 
         start = time.perf_counter()
         asyncio.run(run_mcp())
@@ -104,20 +112,20 @@ class TestMCPOverheadBenchmark:
         print(f"  MCP:    {mcp_ms:.1f}ms")
         print(f"  Overhead: {overhead_pct:+.1f}%")
 
-        assert overhead_pct < 500, (
-            f"MCP overhead too high: {overhead_pct:.1f}%"
-        )
+        assert overhead_pct < 500, f"MCP overhead too high: {overhead_pct:.1f}%"
 
     def test_compute_diff_direct_vs_mcp(self) -> None:
         """Benchmark compute_diff: direct call vs MCP client."""
         # Direct call (sync)
         start = time.perf_counter()
         for _ in range(100):
-            compute_diff(FileDiffInput(
-                original="line1\nline2\nline3\n",
-                modified="line1\nlineModified\nline3\n",
-                file_path="test.py",
-            ))
+            compute_diff(
+                FileDiffInput(
+                    original="line1\nline2\nline3\n",
+                    modified="line1\nlineModified\nline3\n",
+                    file_path="test.py",
+                )
+            )
         direct_ms = (time.perf_counter() - start) * 1000
 
         # MCP call (async)
@@ -125,11 +133,14 @@ class TestMCPOverheadBenchmark:
 
         async def run_mcp() -> None:
             for _ in range(100):
-                await client.call("compute_diff", {
-                    "original": "line1\nline2\nline3\n",
-                    "modified": "line1\nlineModified\nline3\n",
-                    "file_path": "test.py",
-                })
+                await client.call(
+                    "compute_diff",
+                    {
+                        "original": "line1\nline2\nline3\n",
+                        "modified": "line1\nlineModified\nline3\n",
+                        "file_path": "test.py",
+                    },
+                )
 
         start = time.perf_counter()
         asyncio.run(run_mcp())
@@ -142,6 +153,4 @@ class TestMCPOverheadBenchmark:
         print(f"  MCP:    {mcp_ms:.1f}ms")
         print(f"  Overhead: {overhead_pct:+.1f}%")
 
-        assert overhead_pct < 500, (
-            f"MCP overhead too high: {overhead_pct:.1f}%"
-        )
+        assert overhead_pct < 500, f"MCP overhead too high: {overhead_pct:.1f}%"

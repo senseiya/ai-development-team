@@ -137,9 +137,7 @@ class TestListFiles:
         assert "src/main.py" in result.files
 
     def test_list_with_pattern(self, workspace: Path) -> None:
-        result = list_files(
-            FileListInput(workspace_path=str(workspace), pattern="*.md")
-        )
+        result = list_files(FileListInput(workspace_path=str(workspace), pattern="*.md"))
         assert result.files == ["README.md"]
 
     def test_list_empty_workspace(self, tmp_path: Path) -> None:

@@ -49,9 +49,7 @@ async def list_models(
     db: AsyncSession = Depends(get_db_session),
 ) -> list[ModelProfileResponse]:
     """List all model profiles, ordered by priority."""
-    result = await db.execute(
-        select(ModelProfile).order_by(ModelProfile.priority)
-    )
+    result = await db.execute(select(ModelProfile).order_by(ModelProfile.priority))
     profiles = result.scalars().all()
     return [_profile_to_response(p) for p in profiles]
 
@@ -103,9 +101,7 @@ async def update_model(
     db: AsyncSession = Depends(get_db_session),
 ) -> ModelProfileResponse:
     """Update an existing model profile (PATCH)."""
-    result = await db.execute(
-        select(ModelProfile).where(ModelProfile.id == model_id)
-    )
+    result = await db.execute(select(ModelProfile).where(ModelProfile.id == model_id))
     profile = result.scalar_one_or_none()
 
     if profile is None:

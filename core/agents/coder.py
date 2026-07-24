@@ -76,9 +76,8 @@ class CoderAgent(BaseAgent):
         # Build context from plan if available
         plan_context = ""
         if state.get("plan"):
-            plan_context = (
-                "\n\nDevelopment plan:\n"
-                + json.dumps(state["plan"], indent=2, ensure_ascii=False)
+            plan_context = "\n\nDevelopment plan:\n" + json.dumps(
+                state["plan"], indent=2, ensure_ascii=False
             )
 
         prompt = (
@@ -114,11 +113,14 @@ class CoderAgent(BaseAgent):
                         continue
 
                     try:
-                        result = await self._mcp.call("write_file", {
-                            "file_path": file_path,
-                            "content": file_content,
-                            "workspace_path": workspace_path,
-                        })
+                        result = await self._mcp.call(
+                            "write_file",
+                            {
+                                "file_path": file_path,
+                                "content": file_content,
+                                "workspace_path": workspace_path,
+                            },
+                        )
                         created = result.get("created", True)
                         bytes_written = result.get("bytes_written", 0)
                         changes.append(
@@ -129,9 +131,7 @@ class CoderAgent(BaseAgent):
                                 diff="",
                             )
                         )
-                        logger.info(
-                            "MCP write_file: %s (%d bytes)", file_path, bytes_written
-                        )
+                        logger.info("MCP write_file: %s (%d bytes)", file_path, bytes_written)
                     except Exception as e:
                         logger.warning("MCP write_file failed for %s: %s", file_path, e)
                         self._add_message(state, f"Blocked: {e}", "warning")

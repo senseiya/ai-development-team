@@ -187,6 +187,7 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> str:
 
         elif name == "github_create_commit":
             from core.tools.github_tool import GitHubCommitInput
+
             result = await create_commit(GitHubCommitInput(**arguments))
             return result.model_dump_json()
 

@@ -142,8 +142,7 @@ class TesterAgent(BaseAgent):
 
             self._add_message(
                 state,
-                f"Tests: {report.passed}/{report.total} passed, "
-                f"{report.failed} failed",
+                f"Tests: {report.passed}/{report.total} passed, {report.failed} failed",
             )
             return state
 
@@ -164,13 +163,16 @@ class TesterAgent(BaseAgent):
             Dict with exit_code, stdout, stderr or None if Docker unavailable.
         """
         try:
-            result = await self._mcp.call("execute_in_sandbox", {
-                "command": PYTEST_COMMAND,
-                "workspace_path": workspace_path,
-                "timeout": 60,
-                "mem_limit": "256m",
-                "network_disabled": True,
-            })
+            result = await self._mcp.call(
+                "execute_in_sandbox",
+                {
+                    "command": PYTEST_COMMAND,
+                    "workspace_path": workspace_path,
+                    "timeout": 60,
+                    "mem_limit": "256m",
+                    "network_disabled": True,
+                },
+            )
             logger.info(
                 "MCP execute_in_sandbox: exit_code=%s",
                 result.get("exit_code"),

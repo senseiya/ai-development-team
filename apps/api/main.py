@@ -34,18 +34,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup
     setup_logging(log_level=settings.LOG_LEVEL)
-    APP_INFO.info({
-        "version": "0.1.0",
-        "environment": settings.ENVIRONMENT,
-    })
+    APP_INFO.info(
+        {
+            "version": "0.1.0",
+            "environment": settings.ENVIRONMENT,
+        }
+    )
 
     # Auto-migration in development
     if settings.ENVIRONMENT == "development":
         try:
             from core.db.migrate import run_migrations
+
             run_migrations()
         except Exception as e:
             import logging
+
             logging.getLogger(__name__).warning("Auto-migration skipped: %s", e)
 
     yield

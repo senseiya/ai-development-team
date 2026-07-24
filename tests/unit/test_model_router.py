@@ -255,14 +255,15 @@ class TestModelRouterCall:
         router = ModelRouter(db)
 
         mock_provider = MagicMock()
-        mock_provider.complete = AsyncMock(
-            side_effect=ConnectionError("All fail")
-        )
+        mock_provider.complete = AsyncMock(side_effect=ConnectionError("All fail"))
 
-        with patch(
-            "core.router.model_router.get_provider",
-            return_value=mock_provider,
-        ), pytest.raises(RuntimeError, match="All models failed"):
+        with (
+            patch(
+                "core.router.model_router.get_provider",
+                return_value=mock_provider,
+            ),
+            pytest.raises(RuntimeError, match="All models failed"),
+        ):
             await router.call(
                 capability=ModelCapability.CODE_GENERATION,
                 prompt="test prompt",
@@ -296,18 +297,19 @@ class TestModelRouterCall:
         mock_provider = MagicMock()
         mock_provider.complete = mock_complete
 
-        with patch(
-            "core.router.model_router.get_provider",
-            return_value=mock_provider,
-        ), patch("core.router.model_router.logger") as mock_logger:
+        with (
+            patch(
+                "core.router.model_router.get_provider",
+                return_value=mock_provider,
+            ),
+            patch("core.router.model_router.logger") as mock_logger,
+        ):
             await router.call(
                 capability=ModelCapability.CODE_GENERATION,
                 prompt="test",
             )
             mock_logger.info.assert_called_once()
-            assert "Fallback used" in str(
-                mock_logger.info.call_args
-            )
+            assert "Fallback used" in str(mock_logger.info.call_args)
 
 
 class TestSelectedModel:

@@ -231,8 +231,8 @@ server = create_mcp_server()
 - [x] **Fase 4**: Sistema multiagente completo
 - [x] **Fase 5**: Integración con herramientas (GitHub, archivos)
 - [x] **Fase 6**: MCP (Model Context Protocol)
-- [ ] **Fase 7**: Observabilidad
-- [ ] **Fase 8**: Optimización de costos
+- [x] **Fase 7**: Observabilidad
+- [x] **Fase 8**: Optimización de costos
 - [ ] **Fase 9**: Producción
 
 ## Licencia

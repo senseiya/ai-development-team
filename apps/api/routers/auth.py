@@ -1,13 +1,18 @@
-"""Authentication router - JWT login, register, refresh, logout."""
+"""Authentication router - JWT login, register, refresh, logout.
+
+Phase 9: Rate limited (10 req/min) to prevent brute-force attacks.
+"""
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr, Field
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,9 +24,17 @@ from core.auth.tokens import (
     decode_token,
     get_token_jti,
 )
+from core.config import get_settings
 from db.models import User
 
+settings = get_settings()
 router = APIRouter()
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["10/minute"],
+    storage_uri="memory://",
+)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -89,7 +102,9 @@ def _verify_password(plain: str, hashed: str) -> bool:
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
 )
+@limiter.limit("10/minute")
 async def register(
+    request: Request,
     req: RegisterRequest,
     db: AsyncSession = Depends(get_db_session),
 ) -> UserResponse:
@@ -145,7 +160,9 @@ async def register(
     response_model=TokenPair,
     summary="Login and get tokens",
 )
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     req: LoginRequest,
     db: AsyncSession = Depends(get_db_session),
 ) -> TokenPair:

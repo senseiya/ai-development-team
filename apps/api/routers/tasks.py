@@ -2,6 +2,7 @@
 
 Creates a workspace directory for each run and persists file changes.
 Phase 7: Instrumented with RunTracer for full run timing.
+Phase 9: Rate limited (5 req/min) for expensive operations.
 """
 
 import tempfile
@@ -9,11 +10,14 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.deps import get_db_session, verify_api_key
 from core.agents.coder import CoderAgent
+from core.config import get_settings
 from core.observability.tracing import trace_run
 from core.orchestrator.state import create_initial_state
 from core.router.model_router import ModelRouter
@@ -21,7 +25,14 @@ from core.router.registry import seed_model_profiles
 from core.schemas import RunResponse, TaskCreate
 from db.models import FileChange, Run
 
+settings = get_settings()
 router = APIRouter()
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["5/minute"],
+    storage_uri="memory://",
+)
 
 # Base directory for run workspaces
 WORKSPACES_DIR = Path(tempfile.gettempdir()) / "ai-team-workspaces"
@@ -33,7 +44,9 @@ WORKSPACES_DIR = Path(tempfile.gettempdir()) / "ai-team-workspaces"
     status_code=status.HTTP_201_CREATED,
     summary="Create and execute a development task",
 )
+@limiter.limit("5/minute")
 async def create_task(
+    request: Request,
     task: TaskCreate,
     api_key: str = Depends(verify_api_key),
     db: AsyncSession = Depends(get_db_session),

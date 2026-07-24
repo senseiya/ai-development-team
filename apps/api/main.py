@@ -1,15 +1,21 @@
-"""FastAPI application for the AI Development Team platform."""
+"""FastAPI application for the AI Development Team platform.
+
+Phase 9: Rate limiting, auto-migration, hardened config.
+"""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import generate_latest
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from starlette.responses import Response
 
 from apps.api.routers import auth, costs, models, runs, tasks, ws
 from core.config import get_settings
+from core.middleware.rate_limit import limiter
 from core.observability import (
     APP_INFO,
     PrometheusMiddleware,
@@ -24,7 +30,7 @@ settings = get_settings()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager.
 
-    Handles startup and shutdown events.
+    Handles startup (logging, migrations) and shutdown events.
     """
     # Startup
     setup_logging(log_level=settings.LOG_LEVEL)
@@ -32,6 +38,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "version": "0.1.0",
         "environment": settings.ENVIRONMENT,
     })
+
+    # Auto-migration in development
+    if settings.ENVIRONMENT == "development":
+        try:
+            from core.db.migrate import run_migrations
+            run_migrations()
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Auto-migration skipped: %s", e)
+
     yield
     # Shutdown - cleanup resources if needed
 
@@ -42,6 +58,10 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS middleware
 app.add_middleware(

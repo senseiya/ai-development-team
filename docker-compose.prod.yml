@@ -1,0 +1,137 @@
+# ============================================================
+# Production Docker Compose
+# ============================================================
+# Usage: docker compose -f docker-compose.prod.yml up -d
+# ============================================================
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ai-team-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ai_team}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_development_team}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_team}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - ai-team-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-team-redis
+    restart: always
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+    networks:
+      - ai-team-net
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-team-ollama
+    restart: always
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - ai-team-net
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+      target: production
+    container_name: ai-team-api
+    restart: always
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_team}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_development_team}
+      REDIS_URL: redis://redis:6379/0
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in .env}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-qwen/qwen-2.5-coder-32b-instruct:free}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-openrouter}
+      API_KEY_STATIC: ${API_KEY_STATIC:?Set API_KEY_STATIC in .env}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      ENVIRONMENT: production
+      LOG_LEVEL: WARNING
+      BUDGET_MAX_COST_USD: ${BUDGET_MAX_COST_USD:-1.0}
+      BUDGET_MAX_TOKENS: ${BUDGET_MAX_TOKENS:-100000}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SANDBOX_IMAGE: ${SANDBOX_IMAGE:-python:3.12-slim}
+      SANDBOX_TIMEOUT: ${SANDBOX_TIMEOUT:-120}
+      SANDBOX_MEM_LIMIT: ${SANDBOX_MEM_LIMIT:-256m}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    networks:
+      - ai-team-net
+
+  # Optional: Prometheus for metrics scraping
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-team-prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - ai-team-net
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+  prometheus_data:
+
+networks:
+  ai-team-net:
+    driver: bridge

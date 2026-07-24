@@ -115,9 +115,9 @@ class OllamaProvider:
         Returns:
             ProviderHealth with connection status and model info.
         """
-        from core.router.providers.base import ProviderHealth
-
         import time
+
+        from core.router.providers.base import ProviderHealth
 
         try:
             client = await self._get_client()

@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.deps import get_db_session, verify_api_key
 from core.agents.coder import CoderAgent
+from core.router.model_router import ModelRouter
+from core.router.registry import seed_model_profiles
 from core.schemas import RunResponse, TaskCreate
 from db.models import Run
 
@@ -27,11 +29,8 @@ async def create_task(
 ) -> RunResponse:
     """Create a new development task and execute it with the Coder Agent.
 
-    This endpoint:
-    1. Creates a new run record in the database
-    2. Executes the Coder Agent to generate code
-    3. Updates the run with the generated code
-    4. Returns the complete run information
+    The agent uses the ModelRouter to automatically select the best
+    model for code_generation, with fallback chain support.
 
     Args:
         task: The task creation schema with description.
@@ -58,13 +57,18 @@ async def create_task(
     db.add(run)
     await db.flush()
 
-    # Execute Coder Agent
+    # Ensure model profiles are seeded
+    await seed_model_profiles(db)
+
+    # Create ModelRouter and Coder Agent
+    model_router = ModelRouter(db)
     agent = CoderAgent()
     state = {
         "run_id": run_id,
         "user_request": task.description,
         "status": "running",
         "tokens_used": 0,
+        "router": model_router,
     }
 
     try:

@@ -116,9 +116,9 @@ class OpenRouterProvider:
         Returns:
             ProviderHealth with connection status.
         """
-        from core.router.providers.base import ProviderHealth
-
         import time
+
+        from core.router.providers.base import ProviderHealth
 
         try:
             client = await self._get_client()

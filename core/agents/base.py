@@ -1,9 +1,14 @@
 """Base agent interface for the AI Development Team platform."""
 
+from __future__ import annotations
+
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
 from core.schemas import LLMResponse, ModelCapability
+
+logger = logging.getLogger(__name__)
 
 
 class BaseAgent(ABC):
@@ -33,27 +38,45 @@ class BaseAgent(ABC):
         self,
         prompt: str,
         system_prompt: str | None = None,
-        provider: Any | None = None,
+        router: Any | None = None,
+        **kwargs: Any,
     ) -> LLMResponse:
-        """Call the LLM with the given prompt.
+        """Call the LLM through the Model Router.
 
-        In Phase 1, this called OpenRouter directly.
-        In Phase 2, this uses the provider factory based on DEFAULT_PROVIDER config.
-        In Phase 3, this will go through the ModelRouter.
+        In Phase 1/2, this called providers directly.
+        In Phase 3, this goes through ModelRouter using the agent's capability.
 
         Args:
             prompt: The user prompt.
             system_prompt: Optional system prompt.
-            provider: LLM provider instance (uses factory if None).
+            router: ModelRouter instance. If None, falls back to provider factory.
+            **kwargs: Additional arguments (temperature, max_tokens, etc.).
 
         Returns:
             LLMResponse from the model.
         """
-        if provider is None:
-            from core.router.providers import get_provider
+        if router is not None:
+            result = await router.call(
+                capability=self.capability,
+                prompt=prompt,
+                system_prompt=system_prompt,
+                **kwargs,
+            )
+            logger.info(
+                "Agent '%s' used model '%s' via provider '%s' "
+                "(fallback=%s, latency=%.1fms)",
+                self.name,
+                result.selected.model_id,
+                result.selected.provider,
+                result.fallback_used,
+                result.response.latency_ms or 0,
+            )
+            return result.response
 
-            provider = get_provider()
+        # Fallback to provider factory (backward compatibility)
+        from core.router.providers import get_provider
 
+        provider = get_provider()
         return await provider.complete(
             prompt=prompt,
             system_prompt=system_prompt,

@@ -75,7 +75,7 @@ class TestCreateTaskEndpoint:
 
         with patch(
             "apps.api.routers.tasks.CoderAgent"
-        ) as MockAgent:
+        ) as mock_agent_cls:
             mock_instance = AsyncMock()
             mock_instance.run.return_value = {
                 "run_id": "test-run-id",
@@ -84,7 +84,7 @@ class TestCreateTaskEndpoint:
                 "generated_code": mock_openrouter_response.content,
                 "tokens_used": mock_openrouter_response.tokens_used,
             }
-            MockAgent.return_value = mock_instance
+            mock_agent_cls.return_value = mock_instance
 
             response = await client.post(
                 "/api/v1/tasks",
@@ -108,14 +108,14 @@ class TestCreateTaskEndpoint:
         """Test that agent failures are handled properly."""
         app.dependency_overrides[get_db_session] = lambda: mock_db_session
 
-        with patch("apps.api.routers.tasks.CoderAgent") as MockAgent:
+        with patch("apps.api.routers.tasks.CoderAgent") as mock_agent_cls:
             mock_instance = AsyncMock()
             mock_instance.run.return_value = {
                 "run_id": "test-run-id",
                 "status": "failed",
                 "error": "LLM connection failed",
             }
-            MockAgent.return_value = mock_instance
+            mock_agent_cls.return_value = mock_instance
 
             response = await client.post(
                 "/api/v1/tasks",

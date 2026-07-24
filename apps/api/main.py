@@ -1,12 +1,12 @@
 """FastAPI application for the AI Development Team platform."""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from apps.api.routers import runs, tasks
+from apps.api.routers import models, runs, tasks
 from core.config import get_settings
 
 settings = get_settings()
@@ -42,6 +42,7 @@ app.add_middleware(
 # Include routers
 app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
 app.include_router(runs.router, prefix="/api/v1", tags=["runs"])
+app.include_router(models.router, prefix="/api/v1", tags=["models"])
 
 
 @app.get("/health")

@@ -20,6 +20,9 @@ build/
 *.swp
 *.swo
 
+# OpenCode
+.opencode/
+
 # Testing
 .coverage
 htmlcov/

@@ -1,7 +1,7 @@
 """Shared test fixtures for the AI Development Team platform."""
 
-from typing import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch
+from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio

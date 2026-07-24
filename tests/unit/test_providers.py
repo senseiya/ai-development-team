@@ -1,10 +1,9 @@
 """Unit tests for LLM provider protocol and factory."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
-from core.router.providers.base import LLMProvider, ProviderHealth
 from core.router.providers import get_provider, list_providers
+from core.router.providers.base import LLMProvider, ProviderHealth
 from core.schemas import LLMResponse
 
 

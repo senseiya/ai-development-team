@@ -1,7 +1,7 @@
 """Coder Agent - generates code based on user requests.
 
-In Phase 5, the CoderAgent writes generated files to the workspace
-using the filesystem tool and tracks changes for the file_changes table.
+In Phase 6, the CoderAgent uses the MCP client to write files to the
+workspace, reducing coupling with the filesystem tool implementation.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import re
 from core.agents.base import BaseAgent
 from core.orchestrator.state import AgentState, FileDiff
 from core.schemas import ModelCapability
-from core.tools.filesystem_tool import FileWriteInput, write_file
+from core.tools.mcp_client import MCPToolClient
 
 logger = logging.getLogger(__name__)
 
@@ -47,13 +47,16 @@ class CoderAgent(BaseAgent):
 
     name = "coder"
     capability = ModelCapability.CODE_GENERATION
-    tools: list[str] = ["filesystem", "sandbox_exec"]
+    tools: list[str] = ["write_file", "list_files", "compute_diff"]
+
+    def __init__(self) -> None:
+        self._mcp = MCPToolClient()
 
     async def run(self, state: AgentState) -> AgentState:
         """Execute the coder agent.
 
         Generates code via LLM, then writes files to the workspace
-        using the filesystem tool. Records file changes for tracking.
+        using the MCP write_file tool. Records file changes for tracking.
 
         Args:
             state: Must contain 'user_request' and optionally 'workspace_path'.
@@ -101,7 +104,7 @@ class CoderAgent(BaseAgent):
             files = self._parse_files(response.content)
 
             if files and workspace_path:
-                # Write files to workspace
+                # Write files to workspace via MCP client
                 changes = []
                 for file_data in files:
                     file_path = file_data.get("path", "")
@@ -111,32 +114,32 @@ class CoderAgent(BaseAgent):
                         continue
 
                     try:
-                        write_result = write_file(
-                            FileWriteInput(
-                                file_path=file_path,
-                                content=file_content,
-                                workspace_path=workspace_path,
-                            )
-                        )
+                        result = await self._mcp.call("write_file", {
+                            "file_path": file_path,
+                            "content": file_content,
+                            "workspace_path": workspace_path,
+                        })
+                        created = result.get("created", True)
+                        bytes_written = result.get("bytes_written", 0)
                         changes.append(
                             FileDiff(
                                 file_path=file_path,
-                                action="created" if write_result.created else "modified",
+                                action="created" if created else "modified",
                                 content=file_content,
-                                diff="",  # Computed later if needed
+                                diff="",
                             )
                         )
                         logger.info(
-                            "Wrote file: %s (%d bytes)", file_path, write_result.bytes_written
+                            "MCP write_file: %s (%d bytes)", file_path, bytes_written
                         )
-                    except PermissionError as e:
-                        logger.warning("Blocked write to %s: %s", file_path, e)
+                    except Exception as e:
+                        logger.warning("MCP write_file failed for %s: %s", file_path, e)
                         self._add_message(state, f"Blocked: {e}", "warning")
 
                 state["files_changed"] = changes
                 self._add_message(
                     state,
-                    f"Wrote {len(changes)} files to workspace",
+                    f"Wrote {len(changes)} files to workspace via MCP",
                 )
             elif files:
                 # No workspace — store in state only
@@ -181,7 +184,7 @@ class CoderAgent(BaseAgent):
         # Strip markdown code blocks if present
         if text.startswith("```"):
             lines = text.split("\n")
-            lines = [l for l in lines if not l.strip().startswith("```")]
+            lines = [line for line in lines if not line.strip().startswith("```")]
             text = "\n".join(lines).strip()
 
         # Try to extract JSON

@@ -1,7 +1,7 @@
 """Tester Agent - generates and validates test code.
 
-In Phase 5, the TesterAgent executes generated tests in a sandboxed
-Docker container using the sandbox_exec tool.
+In Phase 6, the TesterAgent uses the MCP client to execute tests in a
+sandboxed Docker container via the execute_in_sandbox MCP tool.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import re
 from core.agents.base import BaseAgent
 from core.orchestrator.state import AgentState, TestResult, TestSuiteReport
 from core.schemas import ModelCapability
-from core.tools.sandbox_exec_tool import SandboxExecInput, execute_in_sandbox
+from core.tools.mcp_client import MCPToolClient
 
 logger = logging.getLogger(__name__)
 
@@ -41,21 +41,22 @@ Be strict but fair. Flag real issues, not style preferences.
 """
 
 # Command to run pytest in the sandbox
-PYTEST_COMMAND = "python -m pytest --tb=short -q /workspace 2>&1 || true"
+PYTEST_COMMAND = "python3 -m pytest --tb=short -q /workspace 2>&1 || true"
 
 
 class TesterAgent(BaseAgent):
     """Agent responsible for testing generated code.
 
-    In Phase 5, this agent:
-    1. Generates test files via LLM (analysis)
-    2. Executes tests in a sandboxed Docker container
-    3. Combines LLM analysis with actual execution results
+    Uses MCP client to execute tests in sandbox, combining LLM analysis
+    with actual execution results.
     """
 
     name = "tester"
     capability = ModelCapability.CODE_GENERATION
-    tools: list[str] = ["filesystem", "sandbox_exec"]
+    tools: list[str] = ["execute_in_sandbox", "list_files"]
+
+    def __init__(self) -> None:
+        self._mcp = MCPToolClient()
 
     async def run(self, state: AgentState) -> AgentState:
         """Execute the tester agent.
@@ -91,10 +92,10 @@ class TesterAgent(BaseAgent):
             self._add_message(state, "No code to test", "warning")
             return state
 
-        # Try to execute tests in sandbox if workspace is available
+        # Try to execute tests in sandbox via MCP client
         sandbox_result = None
         if workspace_path:
-            sandbox_result = self._run_tests_in_sandbox(workspace_path)
+            sandbox_result = await self._run_tests_in_sandbox(workspace_path)
 
         # Get LLM analysis
         prompt = (
@@ -116,24 +117,27 @@ class TesterAgent(BaseAgent):
             self._update_tokens(state, response.tokens_used)
 
             # Merge sandbox results if available
-            if sandbox_result and sandbox_result.exit_code is not None:
-                state["sandbox_exit_code"] = sandbox_result.exit_code
-                state["sandbox_output"] = sandbox_result.stdout + sandbox_result.stderr
+            if sandbox_result is not None:
+                exit_code = sandbox_result.get("exit_code", -1)
+                stdout = sandbox_result.get("stdout", "")
+                stderr = sandbox_result.get("stderr", "")
 
-                # If sandbox tests actually ran, override with real results
-                if sandbox_result.exit_code == 0:
+                state["sandbox_exit_code"] = exit_code
+                state["sandbox_output"] = stdout + stderr
+
+                if exit_code == 0:
                     report.passed = report.total
                     report.failed = 0
                     self._add_message(
                         state,
                         "Sandbox tests passed (exit_code=0)",
                     )
-                elif sandbox_result.exit_code > 0:
+                elif exit_code > 0:
                     report.failed = report.total
                     report.passed = 0
                     self._add_message(
                         state,
-                        f"Sandbox tests failed (exit_code={sandbox_result.exit_code})",
+                        f"Sandbox tests failed (exit_code={exit_code})",
                     )
 
             self._add_message(
@@ -150,33 +154,30 @@ class TesterAgent(BaseAgent):
             self._add_message(state, f"Tester failed: {e}", "error")
             return state
 
-    def _run_tests_in_sandbox(self, workspace_path: str):
-        """Execute pytest in a sandboxed Docker container.
+    async def _run_tests_in_sandbox(self, workspace_path: str) -> dict | None:
+        """Execute pytest in a sandboxed Docker container via MCP.
 
         Args:
             workspace_path: Path to the workspace directory.
 
         Returns:
-            SandboxExecOutput or None if Docker is unavailable.
+            Dict with exit_code, stdout, stderr or None if Docker unavailable.
         """
         try:
-            result = execute_in_sandbox(
-                SandboxExecInput(
-                    command=PYTEST_COMMAND,
-                    workspace_path=workspace_path,
-                    timeout=60,
-                    mem_limit="256m",
-                    network_disabled=True,
-                )
-            )
+            result = await self._mcp.call("execute_in_sandbox", {
+                "command": PYTEST_COMMAND,
+                "workspace_path": workspace_path,
+                "timeout": 60,
+                "mem_limit": "256m",
+                "network_disabled": True,
+            })
             logger.info(
-                "Sandbox test execution: exit_code=%d, time=%.1fms",
-                result.exit_code,
-                result.execution_time_ms,
+                "MCP execute_in_sandbox: exit_code=%s",
+                result.get("exit_code"),
             )
             return result
-        except RuntimeError as e:
-            logger.warning("Sandbox unavailable: %s", e)
+        except Exception as e:
+            logger.warning("MCP sandbox unavailable: %s", e)
             return None
 
     def _parse_test_report(self, content: str) -> TestSuiteReport:
@@ -190,7 +191,7 @@ class TesterAgent(BaseAgent):
         # Strip markdown code blocks if present
         if text.startswith("```"):
             lines = text.split("\n")
-            lines = [l for l in lines if not l.strip().startswith("```")]
+            lines = [line for line in lines if not line.strip().startswith("```")]
             text = "\n".join(lines).strip()
 
         # Try to extract JSON from the response

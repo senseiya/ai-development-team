@@ -173,14 +173,64 @@ ai-development-team/
 | `API_KEY_STATIC` | API key estática para autenticación | `change-me-in-production` |
 | `ENVIRONMENT` | Entorno de ejecución | `development` |
 
+## MCP (Model Context Protocol)
+
+The platform exposes all tools via MCP, enabling integration with Claude Desktop, Cursor, and other MCP-compatible clients.
+
+### Available Tools
+
+| Tool | Description | Required Fields |
+|------|-------------|-----------------|
+| `read_file` | Read file contents from workspace | `file_path`, `workspace_path` |
+| `write_file` | Write/create files in workspace | `file_path`, `content`, `workspace_path` |
+| `list_files` | List all files in workspace | `workspace_path` |
+| `compute_diff` | Compute unified diff between strings | `original`, `modified`, `file_path` |
+| `execute_in_sandbox` | Execute command in Docker sandbox | `command`, `timeout`, `memory_limit`, `cpu_quota` |
+| `github_create_branch` | Create a GitHub branch | `repo_owner`, `repo_name`, `branch_name`, `base_branch` |
+| `github_create_commit` | Create a commit with multiple files | `repo_owner`, `repo_name`, `branch_name`, `message`, `files` |
+| `github_create_pr` | Create a Pull Request | `repo_owner`, `repo_name`, `head_branch`, `base_branch`, `title`, `body` |
+| `github_exchange_token` | Exchange OAuth code for token | `code`, `client_id`, `client_secret` |
+| `db_execute_query` | Execute read-only SQL query | `query`, `database_url` |
+| `db_get_schema` | Get database table schemas | `database_url` |
+
+### Claude Desktop Integration
+
+Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "ai-development-team": {
+      "command": "python",
+      "args": ["-m", "core.tools.mcp_server"],
+      "env": {
+        "DATABASE_URL": "postgresql+asyncpg://ai_team:ai_team_secret@localhost:5432/ai_development_team",
+        "GITHUB_TOKEN": "ghp_your_token"
+      }
+    }
+  }
+}
+```
+
+### Running the MCP Server
+
+```bash
+# Stdio mode (for Claude Desktop, Cursor, etc.)
+python -m core.tools.mcp_server
+
+# Or as a library
+from core.tools.mcp_server import create_mcp_server
+server = create_mcp_server()
+```
+
 ## Roadmap
 
 - [x] **Fase 1**: MVP con Coder Agent
-- [ ] **Fase 2**: Integración con múltiples modelos (Ollama)
-- [ ] **Fase 3**: Router automático de modelos
-- [ ] **Fase 4**: Sistema multiagente completo
-- [ ] **Fase 5**: Integración con herramientas (GitHub, archivos)
-- [ ] **Fase 6**: MCP (Model Context Protocol)
+- [x] **Fase 2**: Integración con múltiples modelos (Ollama)
+- [x] **Fase 3**: Router automático de modelos
+- [x] **Fase 4**: Sistema multiagente completo
+- [x] **Fase 5**: Integración con herramientas (GitHub, archivos)
+- [x] **Fase 6**: MCP (Model Context Protocol)
 - [ ] **Fase 7**: Observabilidad
 - [ ] **Fase 8**: Optimización de costos
 - [ ] **Fase 9**: Producción

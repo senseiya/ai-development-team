@@ -1,8 +1,7 @@
 """Documentation Agent - generates documentation and creates Pull Requests.
 
-In Phase 5, the DocumentationAgent:
-1. Generates documentation via LLM
-2. Creates a GitHub branch, commits code + docs, and opens a PR
+In Phase 6, the DocumentationAgent uses the MCP client to interact with
+GitHub (branch, commit, PR) via the github_create_* MCP tools.
 """
 
 from __future__ import annotations
@@ -12,6 +11,7 @@ import logging
 from core.agents.base import BaseAgent
 from core.orchestrator.state import AgentState
 from core.schemas import ModelCapability
+from core.tools.mcp_client import MCPToolClient
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +38,20 @@ class DocumentationAgent(BaseAgent):
 
     name = "documentation"
     capability = ModelCapability.SUMMARIZATION
-    tools: list[str] = ["github"]
+    tools: list[str] = [
+        "github_create_branch",
+        "github_create_commit",
+        "github_create_pr",
+    ]
+
+    def __init__(self) -> None:
+        self._mcp = MCPToolClient()
 
     async def run(self, state: AgentState) -> AgentState:
         """Execute the documentation agent.
 
         Generates documentation, then optionally creates a GitHub PR
-        if github_tool is configured and a workspace is available.
+        via MCP tools if GitHub is configured.
 
         Args:
             state: Must contain 'generated_code' and 'user_request'.
@@ -102,7 +109,7 @@ class DocumentationAgent(BaseAgent):
                 f"Documentation generated ({len(response.content)} chars)",
             )
 
-            # Attempt to create PR if workspace and github config are available
+            # Attempt to create PR via MCP tools
             await self._try_create_pr(state)
 
             return state
@@ -115,7 +122,7 @@ class DocumentationAgent(BaseAgent):
             return state
 
     async def _try_create_pr(self, state: AgentState) -> None:
-        """Attempt to create a GitHub PR with generated code and docs.
+        """Attempt to create a GitHub PR via MCP tools.
 
         This is best-effort: if GitHub is not configured, it silently skips.
         """
@@ -132,12 +139,6 @@ class DocumentationAgent(BaseAgent):
             return
 
         try:
-            from core.tools.github_tool import (
-                GitHubClient,
-            )
-
-            # TODO: These should come from state/config in a real integration
-            # For now, use placeholder values
             repo_owner = state.get("github_owner", "")
             repo_name = state.get("github_repo", "")
 
@@ -149,20 +150,19 @@ class DocumentationAgent(BaseAgent):
                 )
                 return
 
-            client = GitHubClient(token=settings.GITHUB_TOKEN)
             run_id = state.get("run_id", "unknown")
             branch_name = f"ai-dev/{run_id}"
 
-            # Create branch
-            branch = await client.create_branch(
-                owner=repo_owner,
-                repo=repo_name,
-                branch_name=branch_name,
-                base_branch="main",
-            )
+            # Create branch via MCP
+            branch_result = await self._mcp.call("github_create_branch", {
+                "repo_owner": repo_owner,
+                "repo_name": repo_name,
+                "branch_name": branch_name,
+                "base_branch": "main",
+            })
             self._add_message(
                 state,
-                f"Created branch: {branch.branch_name}",
+                f"Created branch: {branch_result.get('branch_name', branch_name)}",
             )
 
             # Prepare files for commit
@@ -185,34 +185,35 @@ class DocumentationAgent(BaseAgent):
                 self._add_message(state, "No files to commit", "warning")
                 return
 
-            # Commit
-            commit = await client.create_commit(
-                owner=repo_owner,
-                repo=repo_name,
-                branch_name=branch_name,
-                message=f"feat: AI-generated code for run {run_id}",
-                files=commit_files,
-            )
+            # Commit via MCP
+            commit_result = await self._mcp.call("github_create_commit", {
+                "repo_owner": repo_owner,
+                "repo_name": repo_name,
+                "branch_name": branch_name,
+                "message": f"feat: AI-generated code for run {run_id}",
+                "files": commit_files,
+            })
+            sha = commit_result.get("sha", "")[:7]
             self._add_message(
                 state,
-                f"Committed {commit.files_changed} files: {commit.sha[:7]}",
+                f"Committed {commit_result.get('files_changed', 0)} files: {sha}",
             )
 
-            # Create PR
-            pr = await client.create_pr(
-                owner=repo_owner,
-                repo=repo_name,
-                head_branch=branch_name,
-                base_branch="main",
-                title=f"AI Dev: {state.get('user_request', '')[:50]}",
-                body=documentation[:4000] if documentation else "Auto-generated PR",
-            )
-            state["pr_url"] = pr.url
+            # Create PR via MCP
+            pr_result = await self._mcp.call("github_create_pr", {
+                "repo_owner": repo_owner,
+                "repo_name": repo_name,
+                "head_branch": branch_name,
+                "base_branch": "main",
+                "title": f"AI Dev: {state.get('user_request', '')[:50]}",
+                "body": documentation[:4000] if documentation else "Auto-generated PR",
+            })
+            state["pr_url"] = pr_result.get("url", "")
             self._add_message(
                 state,
-                f"PR created: {pr.url}",
+                f"PR created: {pr_result.get('url', 'N/A')}",
             )
 
         except Exception as e:
-            logger.warning("Failed to create PR: %s", e)
+            logger.warning("Failed to create PR via MCP: %s", e)
             self._add_message(state, f"PR creation failed: {e}", "warning")

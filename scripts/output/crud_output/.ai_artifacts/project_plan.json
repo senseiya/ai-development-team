@@ -1,0 +1,120 @@
+{
+  "project_name": "task_master_pro",
+  "project_description": "A fullstack task management CRUD application using FastAPI, SQLAlchemy, and Jinja2.",
+  "files": [
+    {
+      "file_path": "requirements.txt",
+      "description": "List of project dependencies: fastapi, uvicorn, sqlalchemy, pydantic, pydantic-settings, jinja2, python-multipart, alembic",
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "file_path": "app/core/config.py",
+      "description": "Application configuration using Pydantic Settings for database URL and environment variables.",
+      "dependencies": [
+        "requirements.txt"
+      ],
+      "status": "pending"
+    },
+    {
+      "file_path": "app/core/database.py",
+      "description": "SQLAlchemy engine and session configuration for SQLite.",
+      "dependencies": [
+        "app/core/config.py"
+      ],
+      "status": "pending"
+    },
+    {
+      "file_path": "app/models/task.py",
+      "description": "SQLAlchemy ORM model for Task with fields: id, title, description, completed, created_at.",
+      "dependencies": [
+        "app/core/database.py"
+      ],
+      "status": "pending"
+    },
+    {
+      "file_path": "app/schemas/task.py",
+      "description": "Pydantic schemas (DTOs) for Task: TaskCreate, TaskUpdate, and TaskResponse.",
+      "dependencies": [
+        "app/models/task.py"
+      ],
+      "status": "pending"
+    },
+    {
+      "file_path": "app/repositories/task_repository.py",
+      "description": "Data access layer implementing CRUD operations for the Task model using SQLAlchemy session.",
+      "dependencies": [
+        "app/models/task.py",
+        "app/core/database.py"
+      ],
+      "status": "pending"
+    },
+    {
+      "file_path": "app/services/task_service.py",
+      "description": "Service layer containing business logic, coordinating between repository and schemas.",
+      "dependencies": [
+        "app/repositories/task_repository.py",
+        "app/schemas/task.py"
+      ],
+      "status": "pending"
+    },
+    {
+      "file_path": "app/api/routes.py",
+      "description": "FastAPI router defining REST endpoints (GET, POST, PUT, DELETE) for tasks.",
+      "dependencies": [
+        "app/services/task_service.py",
+        "app/schemas/task.py"
+      ],
+      "status": "pending"
+    },
+    {
+      "file_path": "app/templates/index.html",
+      "description": "Jinja2 template for the main task dashboard UI.",
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "file_path": "app/static/style.css",
+      "description": "CSS file for responsive and clean UI design.",
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "file_path": "main.py",
+      "description": "Application entry point: initializes FastAPI, mounts static files, includes routers, and sets up templates.",
+      "dependencies": [
+        "app/api/routes.py",
+        "app/templates/index.html",
+        "app/static/style.css"
+      ],
+      "status": "pending"
+    },
+    {
+      "file_path": "alembic/env.py",
+      "description": "Alembic configuration file for database migrations.",
+      "dependencies": [
+        "app/core/database.py",
+        "app/models/task.py"
+      ],
+      "status": "pending"
+    },
+    {
+      "file_path": "tests/test_api.py",
+      "description": "Pytest suite for testing API endpoints using httpx.",
+      "dependencies": [
+        "main.py",
+        "app/schemas/task.py"
+      ],
+      "status": "pending"
+    },
+    {
+      "file_path": "Dockerfile",
+      "description": "Dockerfile for containerizing the FastAPI application.",
+      "dependencies": [
+        "requirements.txt",
+        "main.py"
+      ],
+      "status": "pending"
+    }
+  ]
+}

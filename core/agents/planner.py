@@ -1,107 +1,112 @@
-"""Planner Agent - decomposes user requests into actionable subtasks."""
+"""Planner Agent - decomposes user requests into file-level tasks.
+
+The Planner does NOT make architectural decisions. It reads the
+ProjectBlueprint (produced by the Architect) and decomposes the
+project into file-level tasks following that blueprint exactly.
+"""
 
 from __future__ import annotations
 
 import json
 import logging
-import uuid
 
 from core.agents.base import BaseAgent
-from core.orchestrator.state import AgentState, SubTask
+from core.agents.task_scheduler import TaskScheduler
+from core.orchestrator.state import AgentState, ProjectBlueprint, SubTask
 from core.schemas import ModelCapability
 
 logger = logging.getLogger(__name__)
 
-PLANNER_SYSTEM_PROMPT = """You are a senior software architect and project planner.
-Your task is to decompose a user's request into a clear, ordered plan of subtasks.
+PLANNER_SYSTEM_PROMPT = """You are a software project planner. Your task is to decompose a
+project into individual files that need to be created, following the
+ProjectBlueprint exactly.
 
-Each subtask must have:
-- A unique ID (use short strings like "1", "2", "3")
-- A concise title
-- A detailed description of what needs to be done
-- A list of dependency IDs (subtasks that must complete before this one)
-- Status: "pending"
+The Blueprint defines the architecture, frameworks, patterns, and structure.
+You MUST follow it — do not make your own architectural decisions.
+
+For each file, provide:
+- file_path: relative path from project root
+- description: what this file should contain and do
+- dependencies: list of file_paths that must exist before this file
 
 Guidelines:
-- Break complex tasks into small, testable units
-- Identify dependencies between subtasks
-- Order subtasks so independent ones can run in parallel
-- Keep the plan realistic — don't over-decompose trivial requests
-- For simple requests, 1-3 subtasks are enough
+- Start with config files (pyproject.toml, package.json, etc.)
+- Then shared utilities/types
+- Then models/schemas
+- Then services/business logic
+- Then routes/API layer
+- Then tests
+- Then documentation
+- Use the directory_structure from the Blueprint
+- Use the dependencies from the Blueprint for config files
+- Each file should be self-contained but reference others via imports
+- Keep descriptions specific enough for a developer to implement
+- Do NOT choose frameworks, patterns, or tools — follow the Blueprint
 
-Respond ONLY with a JSON array of subtasks. Example:
-[
-  {"id": "1", "title": "Setup project",
-   "description": "Initialize project structure", "dependencies": []},
-  {"id": "2", "title": "Implement API",
-   "description": "Create REST endpoints", "dependencies": ["1"]}
-]
+Respond ONLY with a JSON object:
+{
+  "files": [
+    {
+      "file_path": "src/models/user.py",
+      "description": "User model with fields: id, name, email, created_at",
+      "dependencies": []
+    }
+  ]
+}
 """
 
 
 class PlannerAgent(BaseAgent):
-    """Agent responsible for decomposing requests into subtask plans."""
+    """Agent responsible for decomposing requests into file-level tasks.
+
+    Reads the ProjectBlueprint and produces a ProjectPlan with file tasks.
+    Does not make architectural decisions — follows the blueprint exactly.
+    """
 
     name = "planner"
     capability = ModelCapability.REASONING
     tools: list[str] = []
 
+    def __init__(self) -> None:
+        self._scheduler = TaskScheduler()
+
     async def run(self, state: AgentState) -> AgentState:
         """Execute the planner agent.
 
-        Reads user_request, produces a list of SubTasks in state["plan"].
+        Reads ProjectBlueprint, uses TaskScheduler to decompose into files.
 
         Args:
-            state: Must contain 'user_request'.
+            state: Must contain 'user_request' and 'project_blueprint'.
 
         Returns:
-            Updated AgentState with 'plan' populated.
+            Updated AgentState with 'file_tasks' and 'project_plan' populated.
         """
-        user_request = state.get("user_request", "")
-
-        if not user_request:
+        blueprint = state.get("project_blueprint")
+        if not blueprint or not isinstance(blueprint, ProjectBlueprint):
             state["status"] = "failed"
-            state["error"] = "No user request provided"
-            self._add_message(state, "No user request provided", "error")
+            state["error"] = "No ProjectBlueprint available. Run Architect first."
+            self._add_message(state, "No ProjectBlueprint available", "error")
             return state
 
-        prompt = f"Decompose the following request into a plan of subtasks:\n\n{user_request}"
+        # Inject blueprint context into user_request for TaskScheduler
+        state = self._inject_blueprint_context(state, blueprint)
 
+        # Use TaskScheduler to get file-level decomposition
         try:
-            response = await self.call_llm(
-                prompt=prompt,
-                system_prompt=PLANNER_SYSTEM_PROMPT,
-                state=state,
-            )
+            state = await self._scheduler.run(state)
+            if state.get("status") == "failed":
+                return state
 
-            # Parse the JSON array of subtasks
-            subtasks = self._parse_subtasks(response.content)
+            # Also create legacy SubTasks for backward compatibility
+            plan = state.get("project_plan")
+            if plan:
+                subtasks = self._create_subtasks_from_plan(plan)
+                state["plan"] = subtasks
 
-            state["plan"] = subtasks
-            state["status"] = "planning"
-            self._update_tokens(state, response.tokens_used)
             self._add_message(
                 state,
-                f"Plan created with {len(subtasks)} subtasks",
-            )
-            return state
-
-        except json.JSONDecodeError as e:
-            logger.error("PlannerAgent: failed to parse LLM response as JSON: %s", e)
-            # Create a single subtask with the full request
-            state["plan"] = [
-                SubTask(
-                    id=str(uuid.uuid4())[:8],
-                    title="Execute request",
-                    description=user_request,
-                    dependencies=[],
-                )
-            ]
-            state["status"] = "planning"
-            self._add_message(
-                state,
-                "LLM response not parseable, created single fallback subtask",
-                "warning",
+                f"Plan created: {len(state.get('file_tasks', []))} files "
+                f"following {blueprint.architecture} architecture",
             )
             return state
 
@@ -112,34 +117,55 @@ class PlannerAgent(BaseAgent):
             self._add_message(state, f"Planner failed: {e}", "error")
             return state
 
-    def _parse_subtasks(self, content: str) -> list[SubTask]:
-        """Parse LLM response into SubTask list.
+    def _inject_blueprint_context(
+        self, state: AgentState, blueprint: ProjectBlueprint
+    ) -> AgentState:
+        """Inject blueprint context into state for TaskScheduler."""
+        # Create a structured prompt for the TaskScheduler
+        blueprint_json = json.dumps({
+            "project_name": blueprint.project_name,
+            "project_type": blueprint.project_type,
+            "backend": blueprint.backend,
+            "backend_language": blueprint.backend_language,
+            "database": blueprint.database,
+            "orm": blueprint.orm,
+            "patterns": blueprint.patterns,
+            "architecture": blueprint.architecture,
+            "directory_structure": blueprint.directory_structure,
+            "dependencies": blueprint.dependencies,
+            "dev_dependencies": blueprint.dev_dependencies,
+            "testing": blueprint.testing,
+            "linting": blueprint.linting,
+            "docker": blueprint.docker,
+            "authentication": blueprint.authentication,
+            "api_style": blueprint.api_style,
+        }, indent=2)
 
-        Handles both raw JSON and markdown code blocks containing JSON.
-        """
-        text = content.strip()
+        # Enhance user_request with blueprint context
+        original_request = state.get("user_request", "")
+        state["user_request"] = (
+            f"{original_request}\n\n"
+            f"=== Project Blueprint (FOLLOW EXACTLY) ===\n"
+            f"{blueprint_json}\n"
+            f"=== End Blueprint ==="
+        )
+        return state
 
-        # Strip markdown code blocks if present
-        if text.startswith("```"):
-            lines = text.split("\n")
-            # Remove first and last lines (``` markers)
-            lines = [line for line in lines if not line.strip().startswith("```")]
-            text = "\n".join(lines).strip()
+    def _create_subtasks_from_plan(self, plan: object) -> list[SubTask]:
+        """Create legacy SubTasks from ProjectPlan for backward compatibility."""
+        from core.orchestrator.state import ProjectPlan
 
-        data = json.loads(text)
-
-        if not isinstance(data, list):
-            data = [data]
+        if not isinstance(plan, ProjectPlan):
+            return []
 
         subtasks = []
-        for item in data:
+        for i, file_task in enumerate(plan.files):
             subtasks.append(
                 SubTask(
-                    id=item.get("id", str(uuid.uuid4())[:8]),
-                    title=item.get("title", "Untitled"),
-                    description=item.get("description", ""),
-                    dependencies=item.get("dependencies", []),
+                    id=str(i + 1),
+                    title=file_task.file_path,
+                    description=file_task.description,
+                    dependencies=file_task.dependencies,
                 )
             )
-
         return subtasks

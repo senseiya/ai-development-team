@@ -10,8 +10,12 @@ from core.orchestrator.graph import (
     _should_retry_coder,
     build_graph,
     compile_graph,
+    derive_run_status,
 )
 from core.orchestrator.state import (
+    FileStatus,
+    FileTask,
+    ProjectPlan,
     TestSuiteReport,
     create_initial_state,
 )
@@ -29,7 +33,7 @@ class TestShouldRetryCoder:
         state["test_results"] = TestSuiteReport(failed=1)
         state["iteration_count"] = 0
 
-        assert _should_retry_coder(state) == "coder"
+        assert _should_retry_coder(state) == "generate_file"
 
     def test_no_retry_when_tests_pass(self) -> None:
         """Don't retry when tests pass."""
@@ -133,3 +137,48 @@ class TestGraphEndToEnd:
         state["status"] = "waiting_approval"
 
         assert _should_continue(state) == "__end__"
+
+
+# --- RunStatus derivation tests ---
+
+
+class TestDeriveRunStatus:
+    def test_pending_initial(self):
+        state = create_initial_state("r1", "test")
+        assert derive_run_status(state) == "running"
+
+    def test_running_during_planning(self):
+        state = create_initial_state("r1", "test")
+        state["status"] = "planning"
+        assert derive_run_status(state) == "running"
+
+    def test_completed(self):
+        state = create_initial_state("r1", "test")
+        state["status"] = "done"
+        assert derive_run_status(state) == "completed"
+
+    def test_failed(self):
+        state = create_initial_state("r1", "test")
+        state["status"] = "failed"
+        assert derive_run_status(state) == "failed"
+
+    def test_waiting_approval(self):
+        state = create_initial_state("r1", "test")
+        state["status"] = "waiting_approval"
+        assert derive_run_status(state) == "waiting_approval"
+
+    def test_partial_success(self):
+        state = create_initial_state("r1", "test")
+        state["status"] = "done"
+        state["project_plan"] = ProjectPlan(
+            files=[FileTask(file_path="a.py", description="file a", status=FileStatus.FAILED)]
+        )
+        assert derive_run_status(state) == "partial_success"
+
+    def test_fully_completed_with_successful_files(self):
+        state = create_initial_state("r1", "test")
+        state["status"] = "done"
+        state["project_plan"] = ProjectPlan(
+            files=[FileTask(file_path="a.py", description="file a", status=FileStatus.DONE)]
+        )
+        assert derive_run_status(state) == "completed"

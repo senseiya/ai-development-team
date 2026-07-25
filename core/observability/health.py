@@ -118,17 +118,6 @@ async def health(
         "status": "configured" if settings.OPENROUTER_API_KEY else "not_configured"
     }
 
-    # Ollama
-    try:
-        import httpx
-
-        async with httpx.AsyncClient(timeout=2) as client:
-            resp = await client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
-            models = [m["name"] for m in resp.json().get("models", [])]
-            checks["ollama"] = {"status": "ok", "models": models}
-    except Exception:
-        checks["ollama"] = {"status": "unreachable"}
-
     all_ok = all(c.get("status") in ("ok", "configured", "not_configured") for c in checks.values())
 
     return {

@@ -23,12 +23,10 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # LLM Providers
+    # LLM Provider (OpenRouter es el único proveedor)
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     OPENROUTER_MODEL: str = "google/gemma-4-26b-a4b-it:free"
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "qwen3.5:9b"
     DEFAULT_PROVIDER: str = "openrouter"
 
     # API

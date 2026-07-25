@@ -13,6 +13,7 @@ from core.agents.reviewer import ReviewerAgent
 from core.agents.tester import TesterAgent
 from core.orchestrator.state import (
     AgentState,
+    ProjectBlueprint,
     create_initial_state,
 )
 from core.schemas import LLMResponse, ModelCapability
@@ -21,6 +22,36 @@ from core.schemas import LLMResponse, ModelCapability
 def _make_state(user_request: str = "Build a REST API") -> AgentState:
     """Create a fresh AgentState for testing."""
     return create_initial_state("test-run-123", user_request)
+
+
+def _make_state_with_blueprint(
+    user_request: str = "Build a REST API",
+) -> AgentState:
+    """Create a fresh AgentState with a ProjectBlueprint for testing."""
+    state = create_initial_state("test-run-123", user_request)
+    state["project_blueprint"] = ProjectBlueprint(
+        project_name="TestAPI",
+        project_type="web_api",
+        description="Test REST API",
+        backend="FastAPI",
+        backend_language="python",
+        frontend="none",
+        frontend_language="none",
+        database="PostgreSQL",
+        orm="SQLAlchemy",
+        cache="none",
+        authentication="JWT",
+        api_style="REST",
+        architecture="layered",
+        patterns=["Repository"],
+        directory_structure=["src/", "src/models/", "src/routes/", "tests/"],
+        dependencies=["fastapi", "sqlalchemy"],
+        dev_dependencies=["pytest", "ruff"],
+        testing=["pytest"],
+        linting=["ruff"],
+        docker=False,
+    )
+    return state
 
 
 def _mock_llm_response(content: str, tokens: int = 100) -> LLMResponse:
@@ -44,30 +75,35 @@ class TestPlannerAgent:
     async def test_planner_parses_json_subtasks(self) -> None:
         """Planner correctly parses JSON array of subtasks."""
         agent = PlannerAgent()
-        state = _make_state()
+        state = _make_state_with_blueprint()
 
-        json_response = """[
-            {"id": "1", "title": "Setup", "description": "Init project", "dependencies": []},
-            {"id": "2", "title": "Implement", "description": "Write code", "dependencies": ["1"]}
-        ]"""
+        json_response = """{
+  "files": [
+    {"file_path": "src/main.py", "description": "Entry point", "dependencies": []},
+    {"file_path": "src/models/user.py", "description": "User model", "dependencies": []}
+  ]
+}"""
 
         agent.call_llm = AsyncMock(return_value=_mock_llm_response(json_response))
         result = await agent.run(state)
 
         assert result["plan"] is not None
         assert len(result["plan"]) == 2
-        assert result["plan"][0].id == "1"
-        assert result["plan"][0].title == "Setup"
-        assert result["plan"][1].dependencies == ["1"]
+        assert result["plan"][0].title == "src/main.py"
+        assert result["plan"][1].title == "src/models/user.py"
 
     @pytest.mark.asyncio
     async def test_planner_handles_markdown_code_block(self) -> None:
         """Planner strips markdown code blocks from LLM response."""
         agent = PlannerAgent()
-        state = _make_state()
+        state = _make_state_with_blueprint()
 
         json_response = """```json
-[{"id": "1", "title": "Task", "description": "Do stuff", "dependencies": []}]
+{
+  "files": [
+    {"file_path": "src/main.py", "description": "Entry point", "dependencies": []}
+  ]
+}
 ```"""
 
         agent.call_llm = AsyncMock(return_value=_mock_llm_response(json_response))
@@ -78,26 +114,24 @@ class TestPlannerAgent:
 
     @pytest.mark.asyncio
     async def test_planner_fallback_on_invalid_json(self) -> None:
-        """Planner creates fallback subtask on invalid JSON."""
+        """Planner fails on invalid JSON (no fallback since it delegates to TaskScheduler)."""
         agent = PlannerAgent()
-        state = _make_state()
+        state = _make_state_with_blueprint()
 
         agent.call_llm = AsyncMock(return_value=_mock_llm_response("not json at all"))
         result = await agent.run(state)
 
-        assert result["plan"] is not None
-        assert len(result["plan"]) == 1
-        assert result["plan"][0].title == "Execute request"
+        assert result["status"] == "failed"
 
     @pytest.mark.asyncio
     async def test_planner_empty_request(self) -> None:
-        """Planner fails gracefully on empty request."""
+        """Planner fails gracefully on empty request (missing blueprint)."""
         agent = PlannerAgent()
         state = _make_state("")
         result = await agent.run(state)
 
         assert result["status"] == "failed"
-        assert "No user request" in (result.get("error") or "")
+        assert "No ProjectBlueprint" in (result.get("error") or "")
 
 
 # --- Coder Agent ---

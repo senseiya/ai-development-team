@@ -120,7 +120,7 @@ class RunUpdate(BaseModel):
 class ModelProfileCreate(BaseModel):
     """Schema for creating a new model profile."""
 
-    provider: str = Field(..., pattern=r"^(openrouter|ollama)$")
+    provider: str = Field(..., pattern=r"^(openrouter)$")
     model_id: str = Field(..., min_length=1, max_length=100)
     display_name: str = Field(..., min_length=1, max_length=100)
     capabilities: list[ModelCapability] = Field(..., min_length=1)
@@ -158,5 +158,43 @@ class ModelProfileResponse(BaseModel):
     enabled: bool
     created_at: datetime
     updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# --- Blueprint Option Schemas ---
+
+
+class BlueprintOptionCreate(BaseModel):
+    """Schema for creating a new blueprint option."""
+
+    category: str = Field(..., min_length=1, max_length=50)
+    key: str = Field(..., min_length=1, max_length=100)
+    display_name: str = Field(..., min_length=1, max_length=200)
+    description: str | None = None
+    is_enabled: bool = True
+    metadata_json: str | None = None
+
+
+class BlueprintOptionUpdate(BaseModel):
+    """Schema for updating a blueprint option."""
+
+    display_name: str | None = None
+    description: str | None = None
+    is_enabled: bool | None = None
+    metadata_json: str | None = None
+
+
+class BlueprintOptionResponse(BaseModel):
+    """Schema for blueprint option responses."""
+
+    id: str
+    category: str
+    key: str
+    display_name: str
+    description: str | None = None
+    is_enabled: bool
+    metadata_json: str | None = None
+    created_at: datetime
 
     model_config = {"from_attributes": True}

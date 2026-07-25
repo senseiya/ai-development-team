@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -73,6 +73,42 @@ class ModelProfile(Base):
         return (
             f"<ModelProfile(id={self.id!r}, provider={self.provider!r}, "
             f"model_id={self.model_id!r})>"
+        )
+
+
+class BlueprintOption(Base):
+    """Editable catalog of valid options for ProjectBlueprint fields.
+
+    Each row represents one allowed value for a volatile category
+    (e.g. backend="FastAPI", orm="SQLAlchemy"). Adding a new option
+    is an INSERT in this table, not a code change.
+
+    Follows the same pattern as model_profiles.
+    """
+
+    __tablename__ = "blueprint_options"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    key: Mapped[str] = mapped_column(String(100), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    __table_args__ = (
+        UniqueConstraint("category", "key", name="uq_blueprint_option_category_key"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<BlueprintOption(category={self.category!r}, "
+            f"key={self.key!r})>"
         )
 
 

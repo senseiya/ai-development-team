@@ -4,6 +4,7 @@ from typing import Any
 
 from core.config import get_settings
 from core.router.providers.base import LLMProvider
+from core.router.providers.openrouter import OpenRouterProvider
 
 
 def get_provider(
@@ -13,7 +14,7 @@ def get_provider(
     """Get an LLM provider instance by name.
 
     Args:
-        provider_name: Provider name ('openrouter' or 'ollama').
+        provider_name: Provider name. Only 'openrouter' is supported.
             If None, uses DEFAULT_PROVIDER from config.
         **kwargs: Additional arguments passed to the provider constructor.
 
@@ -27,15 +28,11 @@ def get_provider(
     name = provider_name or settings.DEFAULT_PROVIDER
 
     if name == "openrouter":
-        from core.router.providers.openrouter import OpenRouterProvider
-
         return OpenRouterProvider(**kwargs)
-    elif name == "ollama":
-        from core.router.providers.ollama import OllamaProvider
-
-        return OllamaProvider(**kwargs)
     else:
-        raise ValueError(f"Unknown provider: '{name}'. Available: 'openrouter', 'ollama'")
+        raise ValueError(
+            f"Unknown provider: '{name}'. Only 'openrouter' is supported."
+        )
 
 
 def list_providers() -> list[str]:
@@ -44,4 +41,4 @@ def list_providers() -> list[str]:
     Returns:
         List of provider names.
     """
-    return ["openrouter", "ollama"]
+    return ["openrouter"]

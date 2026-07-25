@@ -46,25 +46,6 @@ services:
     networks:
       - ai-team-net
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ai-team-ollama
-    restart: always
-    volumes:
-      - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        limits:
-          memory: 8G
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - ai-team-net
-
   api:
     build:
       context: .
@@ -78,9 +59,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ai_team}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_development_team}
       REDIS_URL: redis://redis:6379/0
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in .env}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-qwen/qwen-2.5-coder-32b-instruct:free}
-      OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-google/gemma-4-26b-a4b-it:free}
       DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-openrouter}
       API_KEY_STATIC: ${API_KEY_STATIC:?Set API_KEY_STATIC in .env}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
@@ -129,7 +108,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  ollama_data:
   prometheus_data:
 
 networks:

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Task Manager</h1>
+            <p class="subtitle">Manage your tasks with ease</p>
+        </header>
+
+        <section class="add-task">
+            <h2>Add New Task</h2>
+            <form id="task-form">
+                <input type="text" name="title" placeholder="Task title" required>
+                <input type="text" name="description" placeholder="Description (optional)">
+                <button type="submit">Add Task</button>
+            </form>
+        </section>
+
+        <section class="task-list">
+            <h2>Tasks</h2>
+            <div class="filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="active">Active</button>
+                <button class="filter-btn" data-filter="completed">Completed</button>
+            </div>
+            <div id="task-list" class="tasks"></div>
+            <p id="empty-state" class="empty-state">No tasks yet. Add one above!</p>
+        </section>
+    </div>
+
+    <script>
+        const API = '/api/tasks';
+
+        async function loadTasks(filter = '') {
+            const url = filter ? `${API}/?completed=${filter}` : API;
+            const res = await fetch(url);
+            const tasks = await res.json();
+            const container = document.getElementById('task-list');
+            const empty = document.getElementById('empty-state');
+
+            if (tasks.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+            container.innerHTML = tasks.map(t => `
+                <div class="task ${t.is_completed ? 'completed' : ''}" data-id="${t.id}">
+                    <div class="task-info">
+                        <h3>${t.title}</h3>
+                        ${t.description ? `<p>${t.description}</p>` : ''}
+                        <span class="task-date">${new Date(t.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div class="task-actions">
+                        <button class="toggle-btn" onclick="toggleTask(${t.id}, ${!t.is_completed})">
+                            ${t.is_completed ? 'Undo' : 'Done'}
+                        </button>
+                        <button class="delete-btn" onclick="deleteTask(${t.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('task-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = new FormData(e.target);
+            await fetch(API, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({title: data.get('title'), description: data.get('description') || null})
+            });
+            e.target.reset();
+            loadTasks();
+        });
+
+        async function toggleTask(id, completed) {
+            await fetch(`${API}/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({is_completed: completed})
+            });
+            loadTasks();
+        }
+
+        async function deleteTask(id) {
+            if (!confirm('Delete this task?')) return;
+            await fetch(`${API}/${id}`, {method: 'DELETE'});
+            loadTasks();
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const filter = btn.dataset.filter;
+                loadTasks(filter === 'all' ? '' : filter === 'completed' ? 'true' : 'false');
+            });
+        });
+
+        loadTasks();
+    </script>
+</body>
+</html>

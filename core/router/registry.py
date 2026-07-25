@@ -1,7 +1,7 @@
 """Model registry with seed data for the automatic router.
 
 Seed data populates the model_profiles table with initial free-tier
-models from OpenRouter and one Ollama fallback per capability.
+models from OpenRouter.
 
 To add a new model: INSERT into model_profiles — no code change needed.
 """
@@ -20,7 +20,7 @@ from db.models import ModelProfile
 logger = logging.getLogger(__name__)
 
 # Seed data: list of dicts ready to insert as model_profiles rows.
-# Lower priority = tried first. Ollama models have higher priority (tried last).
+# Lower priority = tried first.
 SEED_MODELS: list[dict] = [
     # --- code_generation ---
     {
@@ -33,16 +33,6 @@ SEED_MODELS: list[dict] = [
         "max_context": 32768,
         "priority": 10,
     },
-    {
-        "provider": "ollama",
-        "model_id": "qwen3.5:9b",
-        "display_name": "Qwen 3.5 9B (Local)",
-        "capabilities": ["code_generation"],
-        "cost_per_1k_input": 0.0,
-        "cost_per_1k_output": 0.0,
-        "max_context": 8192,
-        "priority": 100,
-    },
     # --- reasoning ---
     {
         "provider": "openrouter",
@@ -53,16 +43,6 @@ SEED_MODELS: list[dict] = [
         "cost_per_1k_output": 0.0,
         "max_context": 32768,
         "priority": 10,
-    },
-    {
-        "provider": "ollama",
-        "model_id": "qwen3.5:9b",
-        "display_name": "Qwen 3.5 9B (Local)",
-        "capabilities": ["reasoning"],
-        "cost_per_1k_input": 0.0,
-        "cost_per_1k_output": 0.0,
-        "max_context": 8192,
-        "priority": 100,
     },
     # --- code_review ---
     {
@@ -75,16 +55,6 @@ SEED_MODELS: list[dict] = [
         "max_context": 32768,
         "priority": 10,
     },
-    {
-        "provider": "ollama",
-        "model_id": "qwen3.5:9b",
-        "display_name": "Qwen 3.5 9B (Local)",
-        "capabilities": ["code_review"],
-        "cost_per_1k_input": 0.0,
-        "cost_per_1k_output": 0.0,
-        "max_context": 8192,
-        "priority": 100,
-    },
     # --- summarization ---
     {
         "provider": "openrouter",
@@ -95,16 +65,6 @@ SEED_MODELS: list[dict] = [
         "cost_per_1k_output": 0.0,
         "max_context": 32768,
         "priority": 10,
-    },
-    {
-        "provider": "ollama",
-        "model_id": "qwen3.5:9b",
-        "display_name": "Qwen 3.5 9B (Local)",
-        "capabilities": ["summarization"],
-        "cost_per_1k_input": 0.0,
-        "cost_per_1k_output": 0.0,
-        "max_context": 8192,
-        "priority": 100,
     },
 ]
 

@@ -54,14 +54,6 @@ class TestProviderFactory:
         assert isinstance(provider, OpenRouterProvider)
         assert provider.name == "openrouter"
 
-    def test_get_ollama_provider(self) -> None:
-        """Test getting Ollama provider."""
-        from core.router.providers.ollama import OllamaProvider
-
-        provider = get_provider("ollama")
-        assert isinstance(provider, OllamaProvider)
-        assert provider.name == "ollama"
-
     def test_get_unknown_provider_raises(self) -> None:
         """Test that unknown provider raises ValueError."""
         with pytest.raises(ValueError, match="Unknown provider"):
@@ -71,8 +63,7 @@ class TestProviderFactory:
         """Test listing available providers."""
         providers = list_providers()
         assert "openrouter" in providers
-        assert "ollama" in providers
-        assert len(providers) == 2
+        assert len(providers) == 1
 
 
 class TestProviderHealth:

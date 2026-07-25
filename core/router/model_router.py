@@ -90,7 +90,6 @@ class ModelRouter:
         Args:
             capability: The capability required (e.g. CODE_GENERATION).
             max_cost: Optional maximum cost per 1k input tokens.
-            prefer_local: If True, prefer Ollama models when available.
 
         Returns:
             Ordered list of SelectedModel candidates for fallback chain.
@@ -112,11 +111,6 @@ class ModelRouter:
                 raise ValueError(
                     f"No model for '{capability.value}' within cost limit {max_cost}/1k tokens"
                 )
-
-        if prefer_local:
-            local = [p for p in matching if p["provider"] == "ollama"]
-            remote = [p for p in matching if p["provider"] != "ollama"]
-            matching = local + remote
 
         return [
             SelectedModel(

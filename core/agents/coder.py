@@ -1,7 +1,8 @@
-"""Coder Agent - generates code based on user requests.
+"""Coder Agent - generates code file by file.
 
-In Phase 6, the CoderAgent uses the MCP client to write files to the
-workspace, reducing coupling with the filesystem tool implementation.
+In the incremental generation mode, the CoderAgent generates ONE file per call,
+returning raw content without JSON wrapping. This enables syntax validation
+and repair before moving to the next file.
 """
 
 from __future__ import annotations
@@ -11,13 +12,25 @@ import logging
 import re
 
 from core.agents.base import BaseAgent
-from core.orchestrator.state import AgentState, FileDiff
+from core.agents.context_builder import ContextBuilder
+from core.orchestrator.state import AgentState, FileDiff, FileTask
 from core.schemas import ModelCapability
 from core.tools.mcp_client import MCPToolClient
 
 logger = logging.getLogger(__name__)
 
-CODER_SYSTEM_PROMPT = """You are an expert software developer. Your task is to generate
+CODER_SYSTEM_PROMPT_SINGLE = """You are an expert software developer. Generate ONLY the content
+for a single file. Do not include any other files.
+
+Guidelines:
+- Write production-ready code
+- Include proper error handling
+- Follow language best practices
+- Add docstrings to functions and classes
+- Return ONLY the raw code content, no markdown, no JSON wrapping
+"""
+
+CODER_SYSTEM_PROMPT_MULTI = """You are an expert software developer. Your task is to generate
 high-quality, clean, and well-documented code based on the user's request.
 
 You MUST respond with a JSON object containing a "files" array. Each element has:
@@ -52,11 +65,54 @@ class CoderAgent(BaseAgent):
     def __init__(self) -> None:
         self._mcp = MCPToolClient()
 
-    async def run(self, state: AgentState) -> AgentState:
-        """Execute the coder agent.
+    async def generate_file(
+        self,
+        file_task: FileTask,
+        context_builder: ContextBuilder,
+        state: AgentState,
+    ) -> str | None:
+        """Generate a single file.
 
-        Generates code via LLM, then writes files to the workspace
-        using the MCP write_file tool. Records file changes for tracking.
+        Args:
+            file_task: The file task to generate.
+            context_builder: Builds context for the file.
+            state: Current AgentState.
+
+        Returns:
+            Generated content or None on failure.
+        """
+        file_context = context_builder.build_context(file_task)
+        prompt = file_context.to_prompt()
+
+        try:
+            response = await self.call_llm(
+                prompt=prompt,
+                system_prompt=CODER_SYSTEM_PROMPT_SINGLE,
+                state=state,
+                temperature=0.2,
+            )
+
+            content = self._clean_response(response.content)
+            self._update_tokens(state, response.tokens_used)
+            state["model_used"] = response.model
+            state["provider_used"] = response.provider
+
+            logger.info(
+                "Generated %s (%d bytes) using %s",
+                file_task.file_path,
+                len(content),
+                response.model,
+            )
+            return content
+
+        except Exception as e:
+            logger.error("Failed to generate %s: %s", file_task.file_path, str(e))
+            return None
+
+    async def run(self, state: AgentState) -> AgentState:
+        """Execute the coder agent (legacy mode - generates all files at once).
+
+        For incremental generation, use generate_file() instead.
 
         Args:
             state: Must contain 'user_request' and optionally 'workspace_path'.
@@ -90,7 +146,7 @@ class CoderAgent(BaseAgent):
         try:
             response = await self.call_llm(
                 prompt=prompt,
-                system_prompt=CODER_SYSTEM_PROMPT,
+                system_prompt=CODER_SYSTEM_PROMPT_MULTI,
                 state=state,
             )
 
@@ -167,6 +223,23 @@ class CoderAgent(BaseAgent):
             state["error"] = str(e)
             self._add_message(state, f"Coder failed: {e}", "error")
             return state
+
+    def _clean_response(self, content: str) -> str:
+        """Clean LLM response to extract just the code."""
+        text = content.strip()
+
+        # Strip markdown code blocks
+        if text.startswith("```"):
+            lines = text.split("\n")
+            # Remove first line (```language)
+            if lines:
+                lines = lines[1:]
+            # Remove last line (```)
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines)
+
+        return text.strip()
 
     def _parse_files(self, content: str) -> list[dict[str, str]]:
         """Parse LLM response to extract file list.
